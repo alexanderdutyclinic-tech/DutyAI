@@ -1,53 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Duty AI</title>
-</head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Duty AI — Treatment Plan Generator</title><link rel="stylesheet" href="styles.css"></head>
 <body>
-
-<div class="container">
-
-<h1>🦷 Duty AI</h1>
-
-<h2>Dental Treatment Plan Generator</h2>
-
-<label>Patient Name</label><br>
-<input type="text" id="patientName"><br><br>
-
-<label>Language</label><br>
-
-<select id="language">
-
-<option>Russian</option>
-
-<option>English</option>
-
-<option>French</option>
-
-<option>Spanish</option>
-
-<option>Arabic</option>
-
-</select>
-
-<br><br>
-
-<label>Doctor Diagnosis</label><br>
-
-<textarea
-id="diagnosis"
-rows="10"
-cols="60"></textarea>
-
-<br><br>
-
-<button>
-
-Generate Treatment Plan
-
-</button>
-
-</div>
-</body>
-</html>
+<main class="app-shell">
+<header class="app-header"><div><div class="brand">🦷 Duty AI</div><h1>Treatment Plan Generator</h1><p>Doctor diagnosis → coordinator review → quotation.</p></div><div>Step <strong id="stepNumber">1</strong> of 3</div></header>
+<section class="card" id="step1"><h2>1. Patient & language</h2><label>Patient name</label><input id="patientName" placeholder="Enter patient name"><label>Quotation language</label><select id="language"><option>Russian</option><option>English</option><option>French</option><option>Arabic</option><option>Spanish</option></select><button class="primary" id="toDiagnosis">Continue</button></section>
+<section class="card hidden" id="step2"><h2>2. Diagnosis Copy-past</h2><p>Paste the doctor's message from the WhatsApp group exactly as received.</p><label>Doctor diagnosis / treatment data</label><textarea id="diagnosis" rows="12" placeholder="Paste the doctor's diagnosis here..."></textarea><div class="actions"><button class="secondary" id="backToPatient">Back</button><button class="primary" id="parseDiagnosis">Structure diagnosis</button></div></section>
+<section class="card hidden" id="step3"><h2>3. Confirm treatment data</h2><p>Review the extracted data before creating a quotation.</p><div id="structuredData"></div><label class="check-row"><input type="checkbox" id="confirmTreatment"> I reviewed the treatment data and confirm it matches the doctor's information.</label><div class="actions"><button class="secondary" id="backToDiagnosis">Back</button><button class="primary" id="continueToOptions" disabled>Continue to quotation options</button></div></section>
+<footer>Duty Clinic • Coordinator-controlled workflow</footer>
+</main><script src="app.js"></script></body></html>
