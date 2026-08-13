@@ -47,7 +47,11 @@ $('markupPercent').addEventListener('input',recalculateQuotation);
 $('patientCountry').addEventListener('change',recalculateQuotation);
 
 function addQuotationOption(){
-  optionCount += 1;
+  // Always derive the next number from the options currently on screen.
+  // This prevents a deleted Option 1, 2, 3... from causing the next option
+  // to become Option 6, Option 7, etc.
+  optionCount = document.querySelectorAll('.quotation-option').length + 1;
+
   const optionId = `option-${optionCount}`;
   const implantOptions = DUTY_PRICING.implants.map(item => `<option value="${item.id}">${escapeHtml(item.displayName || item.name)} — $${item.price}</option>`).join('');
   const crownOptions = DUTY_PRICING.crowns.filter(item => item.id !== 'veneers').map(item => `<option value="${item.id}">${escapeHtml(item.displayName || item.name)} — $${item.price}</option>`).join('');
@@ -107,9 +111,28 @@ function addQuotationOption(){
   recalculateQuotation();
 }
 
+function renumberQuotationOptions(){
+  const cards = [...document.querySelectorAll('.quotation-option')];
+  optionCount = cards.length;
+
+  cards.forEach((card, index)=>{
+    const number = index + 1;
+    card.dataset.optionId = `option-${number}`;
+
+    const heading = card.querySelector('.option-header h3');
+    if(heading) heading.textContent = `Option ${number}`;
+
+    const nameInput = card.querySelector('.option-name');
+    if(nameInput && /^Option \d+$/.test(nameInput.value.trim())){
+      nameInput.value = `Option ${number}`;
+    }
+  });
+}
+
 function bindOptionEvents(card){
   card.querySelector('.remove-option').addEventListener('click',()=>{
     card.remove();
+    renumberQuotationOptions();
     recalculateQuotation();
   });
 
