@@ -38,8 +38,14 @@
 
   <section class="card hidden" id="step3">
     <h2>3. Confirm treatment data</h2>
-    <p>Review the extracted data before creating a quotation.</p>
-    <div id="structuredData"></div>
+    <p>The doctor's message is copied below for review. You can edit it if clarification or correction is needed before quotation.</p>
+    <div class="data-box">
+      <div><strong>Patient:</strong> <span id="confirmedPatient"></span></div>
+      <div><strong>Language:</strong> <span id="confirmedLanguage"></span></div>
+      <div><strong>Source:</strong> Diagnosis Copy-past</div>
+      <label for="confirmedDiagnosis"><strong>Doctor data / treatment information</strong></label>
+      <textarea id="confirmedDiagnosis" rows="12"></textarea>
+    </div>
     <label class="check-row"><input type="checkbox" id="confirmTreatment"> I reviewed the treatment data and confirm it matches the doctor's information.</label>
     <div class="actions"><button class="secondary" id="backToDiagnosis">Back</button><button class="primary" id="continueToOptions" disabled>Continue to quotation options</button></div>
   </section>
