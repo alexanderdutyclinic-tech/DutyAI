@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 const steps = [$('step1'), $('step2'), $('step3'), $('step4')];
 const stepNumber = $('stepNumber');
 let optionCount = 0;
-
+let confirmedTreatmentData = null;
 function showStep(index){
   steps.forEach((step,i)=>step.classList.toggle('hidden',i!==index));
   stepNumber.textContent = index + 1;
@@ -23,91 +23,567 @@ $('backToConfirmation').addEventListener('click',()=>showStep(2));
 
 $('parseDiagnosis').addEventListener('click',()=>{
   const text = $('diagnosis').value.trim();
-  if(!text){$('diagnosis').focus();return;}
-  const data = { patient:$('patientName').value.trim(), language:$('language').value, source:'Diagnosis Copy-past', rawDiagnosis:text };
-  $('structuredData').innerHTML = `<div class="data-box"><strong>Patient:</strong> ${escapeHtml(data.patient)}\n<strong>Language:</strong> ${escapeHtml(data.language)}\n<strong>Source:</strong> Diagnosis Copy-past\n\n<strong>Doctor data:</strong>\n${escapeHtml(data.rawDiagnosis)}</div>`;
+
+  if(!text){
+    $('diagnosis').focus();
+    return;
+  }
+
+  const data = {
+    patient: $('patientName').value.trim(),
+    language: $('language').value,
+    source: 'Diagnosis Copy-past',
+    rawDiagnosis: text
+  };
+confirmedTreatmentData = parseTreatmentData(data.rawDiagnosis);
+
+  $('confirmedPatient').textContent = data.patient;
+  $('confirmedLanguage').textContent = data.language;
+  $('confirmedDiagnosis').value = data.rawDiagnosis;
+
   $('confirmTreatment').checked = false;
   $('continueToOptions').disabled = true;
+
   showStep(2);
 });
+function parseTreatmentData(text){
+  const data = {
+    upperImplants: null,
+    lowerImplantsMin: null,
+    lowerImplantsMax: null,
+    crowns: null,
+    crownMaterial: null
+  };
 
+  const upperMatch = text.match(
+    /(\d+)\s*implants?\s*(?:for|in)\s*the\s*upper\s*jaw/i
+  );
+
+  if(upperMatch){
+    data.upperImplants = Number(upperMatch[1]);
+  }
+
+  const lowerMatch = text.match(
+    /(\d+)\s*-\s*(\d+)\s*implants?\s*(?:for|in)\s*the\s*lower\s*jaw/i
+  );
+
+  if(lowerMatch){
+    data.lowerImplantsMin = Number(lowerMatch[1]);
+    data.lowerImplantsMax = Number(lowerMatch[2]);
+  } else {
+    const singleLowerMatch = text.match(
+      /(\d+)\s*implants?\s*(?:for|in)\s*the\s*lower\s*jaw/i
+    );
+
+    if(singleLowerMatch){
+      data.lowerImplantsMin = Number(singleLowerMatch[1]);
+      data.lowerImplantsMax = Number(singleLowerMatch[1]);
+    }
+  }
+
+  const crownMatch = text.match(
+    /\+?\s*(\d+)\s*(?:zirconia\s*)?crowns?/i
+  );
+
+  if(crownMatch){
+    data.crowns = Number(crownMatch[1]);
+  }
+
+  if(/zirconia/i.test(text)){
+    data.crownMaterial = 'zirconia';
+  }
+
+  return data;
+}
 $('confirmTreatment').addEventListener('change',(e)=>{
   $('continueToOptions').disabled = !e.target.checked;
 });
 
 $('continueToOptions').addEventListener('click',()=>{
-  if(!$('quotationOptions').children.length) addQuotationOption();
+  const editedDiagnosis = $('confirmedDiagnosis').value.trim();
+
+  if(!editedDiagnosis){
+    $('confirmedDiagnosis').focus();
+    return;
+  }
+
+  confirmedTreatmentData = parseTreatmentData(editedDiagnosis);
+
+  if(!$('quotationOptions').children.length){
+    addQuotationOption(confirmedTreatmentData);
+  }
+
   showStep(3);
   recalculateQuotation();
 });
 
 $('addOption').addEventListener('click',()=>addQuotationOption());
 $('refreshQuotation').addEventListener('click',recalculateQuotation);
-$('markupPercent').addEventListener('input',recalculateQuotation);
 $('patientCountry').addEventListener('change',recalculateQuotation);
+$('paymentMethod').addEventListener('change',recalculateQuotation);
 
-function addQuotationOption(){
-  // Always derive the next number from the options currently on screen.
-  // This prevents a deleted Option 1, 2, 3... from causing the next option
-  // to become Option 6, Option 7, etc.
-  optionCount = document.querySelectorAll('.quotation-option').length + 1;
+
+function addQuotationOption(treatmentData = confirmedTreatmentData){
+
+  optionCount =
+    document.querySelectorAll('.quotation-option').length + 1;
 
   const optionId = `option-${optionCount}`;
-  const implantOptions = DUTY_PRICING.implants.map(item => `<option value="${item.id}">${escapeHtml(item.displayName || item.name)} — $${item.price}</option>`).join('');
-  const crownOptions = DUTY_PRICING.crowns.filter(item => item.id !== 'veneers').map(item => `<option value="${item.id}">${escapeHtml(item.displayName || item.name)} — $${item.price}</option>`).join('');
-  const procedureOptions = DUTY_PRICING.procedures.map(item => `<label class="check-item"><input type="checkbox" class="procedure-choice" data-price="${item.price}" value="${item.id}"> ${escapeHtml(item.name)}${item.unit ? ` (${escapeHtml(item.unit)})` : ''} — $${item.price}</label>`).join('');
+
+  // =========================================
+  // PRICING OPTIONS
+  // =========================================
+
+  const implantOptions =
+    DUTY_PRICING.implants
+      .map(item =>
+        `<option value="${item.id}">
+          ${escapeHtml(item.displayName || item.name)} — $${item.price}
+        </option>`
+      )
+      .join('');
+
+  const crownOptions =
+    DUTY_PRICING.crowns
+      .filter(item => item.id !== 'veneers')
+      .map(item =>
+        `<option value="${item.id}">
+          ${escapeHtml(item.displayName || item.name)} — $${item.price}
+        </option>`
+      )
+      .join('');
+
+  const procedureOptions =
+    DUTY_PRICING.procedures
+      .map(item =>
+        `<label class="check-item">
+          <input
+            type="checkbox"
+            class="procedure-choice"
+            data-price="${item.price}"
+            value="${item.id}"
+          >
+          ${escapeHtml(item.name)}
+          ${item.unit ? ` (${escapeHtml(item.unit)})` : ''}
+          — $${item.price}
+        </label>`
+      )
+      .join('');
+
+  // =========================================
+  // HOTEL OPTIONS
+  // =========================================
+
+  const hotelOptions =
+    DUTY_PRICING.hotels
+      .map(hotel =>
+        `<option value="${hotel.id}">
+          ${escapeHtml(hotel.name)}
+        </option>`
+      )
+      .join('');
+
+  // =========================================
+  // CREATE OPTION
+  // =========================================
 
   const card = document.createElement('article');
+
   card.className = 'quotation-option';
   card.dataset.optionId = optionId;
+
   card.innerHTML = `
-    <div class="option-header"><h3>Option ${optionCount}</h3><button type="button" class="remove-option secondary">Remove</button></div>
+
+    <div class="option-header">
+      <h3>Option ${optionCount}</h3>
+
+      <button
+        type="button"
+        class="remove-option secondary"
+      >
+        Remove
+      </button>
+    </div>
+
+
+    <!-- OPTION NAME -->
 
     <label>Option name</label>
-    <input class="option-name" value="Option ${optionCount}" placeholder="e.g. Medentika + Straumann Zirconia">
+
+    <input
+      class="option-name"
+      value="Option ${optionCount}"
+      placeholder="e.g. Medentika + Ivoclar Zirconia"
+    >
+
+
+    <!-- =====================================
+         TREATMENT
+         ===================================== -->
 
     <div class="grid-2">
-      <div>
-        <h4>Upper jaw</h4>
-        <label>Implants</label>
-        <input class="upper-implant-count" type="number" min="0" step="1" value="0">
-        <label>Implant system</label>
-        <select class="upper-implant-brand"><option value="">Select implant</option>${implantOptions}</select>
-        <label>Bridge price (USD)</label>
-        <input class="bridge-price" type="number" min="0" step="1" placeholder="Enter confirmed bridge price">
-        <small class="warning-text">Bridge price is not in the official price list, so it must be confirmed before quotation.</small>
-      </div>
+
+      <!-- IMPLANTS -->
 
       <div>
-        <h4>Lower jaw</h4>
-        <label>Implants</label>
-        <input class="lower-implant-count" type="number" min="0" step="1" value="0">
+
+        <h4>Implants</h4>
+
+        <label>Total implants</label>
+
+        <input
+          class="implant-count"
+          type="number"
+          min="0"
+          step="1"
+          value="${
+            (treatmentData?.upperImplants ?? 0) +
+            (treatmentData?.lowerImplantsMin ?? 0)
+          }"
+        >
+
         <label>Implant system</label>
-        <select class="lower-implant-brand"><option value="">Select implant</option>${implantOptions}</select>
-        <label>Crowns</label>
-        <input class="crown-count" type="number" min="0" step="1" value="0">
-        <label>Crown material</label>
-        <select class="crown-brand"><option value="">Select crown material</option>${crownOptions}</select>
+
+        <select
+          class="implant-brand"
+          required
+        >
+          <option value="">
+            Select implant
+          </option>
+
+          ${implantOptions}
+        </select>
+
+        <label>Implant markup (internal)</label>
+
+        <select class="implant-markup">
+          <option value="">
+            Select markup
+          </option>
+        </select>
+
+        <small class="warning-text implant-markup-guidance">
+          Select an implant system to determine the allowed markup range.
+        </small>
+
       </div>
+
+
+      <!-- CROWNS -->
+
+      <div>
+
+        <h4>Crowns</h4>
+
+        <label>Total crowns</label>
+
+        <input
+          class="crown-count"
+          type="number"
+          min="0"
+          step="1"
+          value="${treatmentData?.crowns ?? 0}"
+        >
+
+        <label>Crown system / material</label>
+
+        <select class="crown-brand">
+
+          <option value="">
+            Select crown material
+          </option>
+
+          ${crownOptions}
+
+        </select>
+
+        <label>Crown markup (internal)</label>
+
+        <select class="crown-markup">
+
+          <option value="">
+            Select markup
+          </option>
+
+        </select>
+
+        <small class="warning-text crown-markup-guidance">
+          Select a crown material to determine the allowed markup range.
+        </small>
+
+      </div>
+
     </div>
+
+
+    <!-- =====================================
+         ADDITIONAL PROCEDURES
+         ===================================== -->
 
     <h4>Additional procedures</h4>
-    <div class="procedure-list">${procedureOptions}</div>
+
+    <div class="procedure-list">
+      ${procedureOptions}
+    </div>
+
+
+    <!-- =====================================
+         VISIT PLAN
+         ===================================== -->
 
     <h4>Visit plan</h4>
-    <label class="check-row"><input type="checkbox" class="one-visit-confirm"> Doctor/coordinator confirmed that this implant case can be completed in 1 visit</label>
-    <div class="grid-2 visit-fields">
-      <div><label>Number of visits</label><input class="visit-count" type="number" min="1" step="1" value="2" readonly></div>
-      <div><label>Visit duration</label><input class="visit-duration" value="To be confirmed" placeholder="e.g. 5 days + 7 days"></div>
-    </div>
-    <div class="visit-note">Implant cases default to 2 visits. One visit is allowed only when the coordinator confirms the dentist has approved it; for one-visit cases, the coordinator should specify the planned stay, approximately 15 days.</div>
 
-    <div class="option-total"><span>Option subtotal</span><strong class="option-subtotal">$0</strong></div>
+    <label>Number of visits</label>
+
+    <select class="visit-plan">
+
+      <option value="2">
+        2 visits
+      </option>
+
+      <option value="1">
+        1 visit
+      </option>
+
+    </select>
+
+
+    <!-- =====================================
+         ONE VISIT
+         ===================================== -->
+
+    <div class="visit-template visit-template-1 hidden">
+
+      <h4>1-visit plan</h4>
+
+      <label>Planned stay</label>
+
+      <input
+        class="one-visit-duration"
+        value="15 days"
+        placeholder="e.g. 15 days"
+      >
+
+      <label>Hotel</label>
+
+      <select class="one-visit-hotel">
+        <option value="">
+          Select hotel
+        </option>
+
+        ${hotelOptions}
+
+      </select>
+
+      <label>Room type</label>
+
+      <select class="one-visit-room">
+        <option value="single">Single</option>
+        <option value="double">Double</option>
+        <option value="triple">Triple</option>
+      </select>
+
+      <label>Number of nights</label>
+
+      <input
+        class="one-visit-nights"
+        type="number"
+        min="0"
+        step="1"
+        value="15"
+      >
+
+      <div class="visit-template-note">
+        One-visit treatment requires explicit coordinator confirmation.
+      </div>
+
+    </div>
+
+
+    <!-- =====================================
+         TWO VISITS
+         ===================================== -->
+
+    <div class="visit-template visit-template-2">
+
+      <h4>First visit</h4>
+
+      <label>Crowns completed in Visit 1</label>
+
+      <input
+        class="visit1-crown-count"
+        type="number"
+        min="0"
+        step="1"
+        value="0"
+      >
+
+      <small class="warning-text">
+        Remaining crowns will automatically be assigned to Visit 2.
+      </small>
+
+
+      <label>Hotel</label>
+
+      <select class="visit1-hotel">
+
+        <option value="">
+          Select hotel
+        </option>
+
+        ${hotelOptions}
+
+      </select>
+
+
+      <label>Room type</label>
+
+      <select class="visit1-room">
+
+        <option value="single">
+          Single
+        </option>
+
+        <option value="double">
+          Double
+        </option>
+
+        <option value="triple">
+          Triple
+        </option>
+
+      </select>
+
+
+      <label>Number of nights</label>
+
+      <input
+        class="visit1-nights"
+        type="number"
+        min="0"
+        step="1"
+        value="4"
+      >
+
+
+      <h4>Second visit</h4>
+
+      <label>Hotel</label>
+
+      <select class="visit2-hotel">
+
+        <option value="">
+          Select hotel
+        </option>
+
+        ${hotelOptions}
+
+      </select>
+
+
+      <label>Room type</label>
+
+      <select class="visit2-room">
+
+        <option value="single">
+          Single
+        </option>
+
+        <option value="double">
+          Double
+        </option>
+
+        <option value="triple">
+          Triple
+        </option>
+
+      </select>
+
+
+      <label>Number of nights</label>
+
+      <input
+        class="visit2-nights"
+        type="number"
+        min="0"
+        step="1"
+        value="7"
+      >
+
+    </div>
+
+
+    <!-- =====================================
+         SERVICES
+         ===================================== -->
+
+    <h4>Additional services</h4>
+
+    <div class="visit-services">
+
+      <label>VIP transfer</label>
+
+      <select class="transfer-option">
+
+        <option value="0">
+          Free
+        </option>
+
+        <option value="100">
+          $100
+        </option>
+
+      </select>
+
+
+      <label>Dental prosthesis</label>
+
+      <select class="prosthesis-option">
+
+        <option value="0">
+          Not offered
+        </option>
+
+        <option value="200">
+          $200
+        </option>
+
+      </select>
+
+
+      <label>Translator</label>
+
+      <input
+        value="Included — Free"
+        readonly
+      >
+
+    </div>
+
+
+    <!-- =====================================
+         TOTAL
+         ===================================== -->
+
+    <div class="option-total">
+
+      <span>
+        Option subtotal
+      </span>
+
+      <strong class="option-subtotal">
+        $0
+      </strong>
+
+    </div>
+
   `;
 
   $('quotationOptions').appendChild(card);
+
   bindOptionEvents(card);
-  updateVisitFields(card);
+
   recalculateQuotation();
 }
 
@@ -130,21 +606,110 @@ function renumberQuotationOptions(){
 }
 
 function bindOptionEvents(card){
+  // Remove option
   card.querySelector('.remove-option').addEventListener('click',()=>{
     card.remove();
-    renumberQuotationOptions();
     recalculateQuotation();
   });
 
-  card.querySelector('.one-visit-confirm').addEventListener('change',()=>{
-    updateVisitFields(card);
+  // Visit plan
+  const visitPlan = card.querySelector('.visit-plan');
+  const visitTemplate1 = card.querySelector('.visit-template-1');
+  const visitTemplate2 = card.querySelector('.visit-template-2');
+
+  function updateVisitPlan(){
+    const visits = visitPlan.value;
+
+    visitTemplate1.classList.toggle('hidden', visits !== '1');
+    visitTemplate2.classList.toggle('hidden', visits !== '2');
+
+    recalculateQuotation();
+  }
+
+  visitPlan.addEventListener('change', updateVisitPlan);
+
+  // Implant system and markup
+  const implantSelect = card.querySelector('.implant-brand');
+  const implantMarkupSelect = card.querySelector('.implant-markup');
+  const implantMarkupGuidance = card.querySelector('.implant-markup-guidance');
+
+  implantSelect.addEventListener('change',()=>{
+    const implant = getSelected(
+      DUTY_PRICING.implants,
+      implantSelect.value
+    );
+
+    if(!implant){
+      implantMarkupSelect.innerHTML =
+        '<option value="">Select markup</option>';
+
+      implantMarkupGuidance.textContent =
+        'Select an implant system to determine the allowed markup range.';
+
+      recalculateQuotation();
+      return;
+    }
+
+    const markupOptions = getUnitMarkupOptions(implant.price);
+
+    implantMarkupSelect.innerHTML = markupOptions
+      .map(markup => `<option value="${markup}">${markup}%</option>`)
+      .join('');
+
+    implantMarkupGuidance.textContent =
+      `Base price: ${money(implant.price)} per implant. ` +
+      `Allowed markup: ${markupOptions.join('%, ')}%.`;
+
     recalculateQuotation();
   });
 
-  card.querySelector('.visit-count').addEventListener('input',recalculateQuotation);
-  card.querySelector('.visit-duration').addEventListener('input',recalculateQuotation);
-  card.querySelectorAll('input,select').forEach(input=>input.addEventListener('input',recalculateQuotation));
-  card.querySelectorAll('select').forEach(select=>select.addEventListener('change',recalculateQuotation));
+  implantMarkupSelect.addEventListener('change',recalculateQuotation);
+
+  // Crown system and markup
+  const crownSelect = card.querySelector('.crown-brand');
+  const crownMarkupSelect = card.querySelector('.crown-markup');
+  const crownMarkupGuidance = card.querySelector('.crown-markup-guidance');
+
+  crownSelect.addEventListener('change',()=>{
+    const crown = getSelected(
+      DUTY_PRICING.crowns,
+      crownSelect.value
+    );
+
+    if(!crown){
+      crownMarkupSelect.innerHTML =
+        '<option value="">Select markup</option>';
+
+      crownMarkupGuidance.textContent =
+        'Select a crown material to determine the allowed markup range.';
+
+      recalculateQuotation();
+      return;
+    }
+
+    const markupOptions = getUnitMarkupOptions(crown.price);
+
+    crownMarkupSelect.innerHTML = markupOptions
+      .map(markup => `<option value="${markup}">${markup}%</option>`)
+      .join('');
+
+    crownMarkupGuidance.textContent =
+      `Base price: ${money(crown.price)} per crown. ` +
+      `Allowed markup: ${markupOptions.join('%, ')}%.`;
+
+    recalculateQuotation();
+  });
+
+  crownMarkupSelect.addEventListener('change',recalculateQuotation);
+
+  // All other inputs/selects
+  card.querySelectorAll('input, select').forEach(input=>{
+    input.addEventListener('input',recalculateQuotation);
+    input.addEventListener('change',recalculateQuotation);
+  });
+
+  // Initialize the correct visit template
+  updateVisitPlan();
 }
 
 function updateVisitFields(card){
@@ -157,72 +722,418 @@ function updateVisitFields(card){
   if(!oneVisit && duration.value === 'Approximately 15 days') duration.value = 'To be confirmed';
 }
 
+function getUnitMarkupOptions(price){
+  if(price >= 50 && price <= 350){
+    return [20, 25, 30, 35];
+  }
+
+  if(price > 350 && price <= 750){
+    return [10, 12, 15];
+  }
+
+  if(price > 750){
+    return [5, 7];
+  }
+
+  return [0];
+}
+
 function getSelected(items, id){
   return items.find(item=>item.id===id);
 }
 
 function calculateOption(card){
   let subtotal = 0;
-  let hasImplants = false;
 
-  const upperCount = numberValue(card.querySelector('.upper-implant-count').value);
-  const lowerCount = numberValue(card.querySelector('.lower-implant-count').value);
-  const crownCount = numberValue(card.querySelector('.crown-count').value);
-  hasImplants = upperCount + lowerCount > 0;
+  // =========================================
+  // BASIC TREATMENT DATA
+  // =========================================
 
-  const upperImplant = getSelected(DUTY_PRICING.implants, card.querySelector('.upper-implant-brand').value);
-  const lowerImplant = getSelected(DUTY_PRICING.implants, card.querySelector('.lower-implant-brand').value);
-  const crown = getSelected(DUTY_PRICING.crowns, card.querySelector('.crown-brand').value);
-  const bridgePrice = numberValue(card.querySelector('.bridge-price').value);
+  const implantCount = numberValue(
+    card.querySelector('.implant-count')?.value
+  );
 
-  if(upperImplant) subtotal += upperCount * upperImplant.price;
-  if(lowerImplant) subtotal += lowerCount * lowerImplant.price;
-  if(crown) subtotal += crownCount * crown.price;
-  if(card.querySelector('.bridge-price').value !== '') subtotal += bridgePrice;
+  const crownCount = numberValue(
+    card.querySelector('.crown-count')?.value
+  );
 
-  card.querySelectorAll('.procedure-choice:checked').forEach(choice=>subtotal += numberValue(choice.dataset.price));
+  const visitPlan =
+    card.querySelector('.visit-plan')?.value || '2';
 
-  card.querySelector('.option-subtotal').textContent = money(subtotal);
-  return { subtotal, hasImplants, visits: numberValue(card.querySelector('.visit-count').value) };
+  const visits = Number(visitPlan);
+
+  // =========================================
+  // IMPLANT PRICE + MARKUP
+  // =========================================
+
+  const implant = getSelected(
+    DUTY_PRICING.implants,
+    card.querySelector('.implant-brand')?.value
+  );
+
+  const implantMarkup = numberValue(
+    card.querySelector('.implant-markup')?.value
+  );
+
+  const implantUnitPrice = implant
+    ? implant.price * (1 + implantMarkup / 100)
+    : 0;
+
+  const totalImplantPrice =
+    implantCount * implantUnitPrice;
+
+  // =========================================
+  // CROWN PRICE + MARKUP
+  // =========================================
+
+  const crown = getSelected(
+    DUTY_PRICING.crowns,
+    card.querySelector('.crown-brand')?.value
+  );
+
+  const crownMarkup = numberValue(
+    card.querySelector('.crown-markup')?.value
+  );
+
+  const crownUnitPrice = crown
+    ? crown.price * (1 + crownMarkup / 100)
+    : 0;
+
+  // =========================================
+  // CROWNS BY VISIT
+  // =========================================
+
+  let visit1Crowns = crownCount;
+  let visit2Crowns = 0;
+
+  if(visits === 2){
+
+    visit1Crowns = Math.min(
+      numberValue(
+        card.querySelector('.visit1-crown-count')?.value
+      ),
+      crownCount
+    );
+
+    visit2Crowns =
+      crownCount - visit1Crowns;
+  }
+
+  const visit1CrownPrice =
+    visit1Crowns * crownUnitPrice;
+
+  const visit2CrownPrice =
+    visit2Crowns * crownUnitPrice;
+
+  // =========================================
+  // ADDITIONAL PROCEDURES
+  // =========================================
+
+  let proceduresTotal = 0;
+
+  card
+    .querySelectorAll('.procedure-choice:checked')
+    .forEach(choice => {
+      proceduresTotal += numberValue(choice.dataset.price);
+    });
+
+  // Procedures currently assigned to Visit 1.
+  const visit1Procedures = proceduresTotal;
+  const visit2Procedures = 0;
+
+  // =========================================
+  // BRIDGE
+  // =========================================
+
+  const bridgeField =
+    card.querySelector('.bridge-price');
+
+  const bridgePrice =
+    bridgeField && bridgeField.value !== ''
+      ? numberValue(bridgeField.value)
+      : 0;
+
+  const visit1Bridge = bridgePrice;
+  const visit2Bridge = 0;
+
+  // =========================================
+  // HOTEL HELPER
+  // =========================================
+
+  function calculateHotel(
+    hotelId,
+    roomType,
+    nights
+  ){
+    if(!hotelId || nights <= 0){
+      return 0;
+    }
+
+    const hotel = DUTY_PRICING.hotels.find(
+      item => item.id === hotelId
+    );
+
+    if(!hotel){
+      return 0;
+    }
+
+    let nightlyPrice = null;
+
+    if(hotel.roomOptions){
+      const room = hotel.roomOptions.find(
+        item =>
+          item.name.toLowerCase().includes(roomType)
+      );
+
+      if(room){
+        nightlyPrice = room.price;
+      }
+    } else {
+      nightlyPrice = hotel[roomType];
+    }
+
+    if(
+      nightlyPrice === null ||
+      nightlyPrice === undefined ||
+      !Number.isFinite(Number(nightlyPrice))
+    ){
+      return 0;
+    }
+
+    return Number(nightlyPrice) * nights;
+  }
+
+  // =========================================
+  // HOTEL — VISIT 1
+  // =========================================
+
+  let hotelFirst = 0;
+  let hotelSecond = 0;
+
+  if(visits === 1){
+
+    hotelFirst = calculateHotel(
+      card.querySelector('.one-visit-hotel')?.value,
+      card.querySelector('.one-visit-room')?.value || 'single',
+      numberValue(
+        card.querySelector('.one-visit-nights')?.value
+      )
+    );
+
+  } else {
+
+    hotelFirst = calculateHotel(
+      card.querySelector('.visit1-hotel')?.value,
+      card.querySelector('.visit1-room')?.value || 'single',
+      numberValue(
+        card.querySelector('.visit1-nights')?.value
+      )
+    );
+
+    hotelSecond = calculateHotel(
+      card.querySelector('.visit2-hotel')?.value,
+      card.querySelector('.visit2-room')?.value || 'single',
+      numberValue(
+        card.querySelector('.visit2-nights')?.value
+      )
+    );
+  }
+
+  // =========================================
+  // VIP TRANSFER
+  // =========================================
+
+  const transfer =
+    numberValue(
+      card.querySelector('.transfer-option')?.value
+    );
+
+  const visit1Transfer = transfer;
+  const visit2Transfer = 0;
+
+  // =========================================
+  // DENTAL PROSTHESIS
+  // =========================================
+
+  const prosthesis =
+    numberValue(
+      card.querySelector('.prosthesis-option')?.value
+    );
+
+  const visit1Prosthesis = prosthesis;
+  const visit2Prosthesis = 0;
+
+  // Translator is always free.
+  const translator = 0;
+
+  // =========================================
+  // VISIT TOTALS
+  // =========================================
+
+  const visit1Total =
+    totalImplantPrice +
+    visit1CrownPrice +
+    visit1Procedures +
+    visit1Bridge +
+    hotelFirst +
+    visit1Transfer +
+    visit1Prosthesis;
+
+  const visit2Total =
+    visit2CrownPrice +
+    visit2Procedures +
+    visit2Bridge +
+    hotelSecond +
+    visit2Transfer;
+
+  // =========================================
+  // OPTION TOTAL
+  // =========================================
+
+  subtotal =
+    visit1Total +
+    visit2Total;
+
+  // =========================================
+  // DISPLAY
+  // =========================================
+
+  const subtotalElement =
+    card.querySelector('.option-subtotal');
+
+  if(subtotalElement){
+    subtotalElement.textContent =
+      money(subtotal);
+  }
+
+  // =========================================
+  // RETURN
+  // =========================================
+
+  return {
+    subtotal,
+
+    hasImplants:
+      implantCount > 0,
+
+    totalImplants:
+      implantCount,
+
+    totalCrowns:
+      crownCount,
+
+    visits,
+
+    visit1Implants:
+      implantCount,
+
+    visit2Implants:
+      0,
+
+    visit1Crowns,
+    visit2Crowns,
+
+    visit1Total,
+    visit2Total,
+
+    implantUnitPrice,
+    crownUnitPrice,
+
+    hotelFirst,
+    hotelSecond,
+
+    transfer,
+    prosthesis,
+
+    translator
+  };
 }
-
 function recalculateQuotation(){
   const cards = [...document.querySelectorAll('.quotation-option')];
   let baseTotal = 0;
   let implantCase = false;
   const optionSummaries = [];
 
-  cards.forEach(card=>{
+ cards.forEach(card=>{
     const result = calculateOption(card);
     baseTotal += result.subtotal;
     implantCase = implantCase || result.hasImplants;
-    optionSummaries.push({name: card.querySelector('.option-name').value || 'Option', subtotal: result.subtotal, visits: result.visits});
+    optionSummaries.push({
+      name: card.querySelector('.option-name').value || 'Option',
+      subtotal: result.subtotal,
+      visits: result.visits
+    });
   });
 
-  const markup = Math.max(0, numberValue($('markupPercent').value));
-  const markedTotal = baseTotal * (1 + markup / 100);
+  const markedTotal = baseTotal 
+
   const country = $('patientCountry').value;
-  const eligible = DUTY_PRICING.financing.eligibleCountries.includes(country);
+  const paymentMethod = $('paymentMethod').value;
+const eligible =
+  paymentMethod === 'installments' &&
+  DUTY_PRICING.financing.eligibleCountries.includes(country);
 
   let html = optionSummaries.length
-    ? optionSummaries.map(item=>`<div class="summary-row"><span>${escapeHtml(item.name)} <small>(${item.visits} visit${item.visits===1?'':'s'})</small></span><strong>${money(item.subtotal)}</strong></div>`).join('')
+    ? optionSummaries.map(item =>
+        `<div class="summary-row">
+          <span>${escapeHtml(item.name)} 
+            <small>(${item.visits} visit${item.visits === 1 ? '' : 's'})</small>
+          </span>
+          <strong>${money(item.subtotal)}</strong>
+        </div>`
+      ).join('')
     : '<p>No quotation options added yet.</p>';
 
-  html += `<div class="summary-row"><span>Base total</span><strong>${money(baseTotal)}</strong></div>`;
-  html += `<div class="summary-row"><span>Coordinator markup (${markup}%)</span><strong>${money(markedTotal - baseTotal)}</strong></div>`;
-  html += `<div class="summary-row grand-total"><span>Patient quotation total</span><strong>${money(markedTotal)}</strong></div>`;
+  // Patient-facing total — no markup information shown
+  html += `
+    <div class="summary-row grand-total">
+      <span>Patient quotation total</span>
+      <strong>${money(markedTotal)}</strong>
+    </div>
+  `;
 
   if(implantCase){
-    html += `<div class="rule-note">Implant case: default is 2 visits. A 1-visit plan requires explicit coordinator confirmation.</div>`;
+    html += `
+      <div class="rule-note">
+        Implant case: default is 2 visits. A 1-visit plan requires explicit coordinator confirmation.
+      </div>
+    `;
   }
 
   if(eligible){
     const financedPackage = markedTotal * 1.20;
-    const installment = Math.min(DUTY_PRICING.financing.installmentAmount, financedPackage);
-    const cashRemaining = Math.max(0, financedPackage - installment);
-    const visits = optionSummaries.length ? Math.max(...optionSummaries.map(item=>item.visits)) : 2;
-    const cashPerVisit = visits > 1 ? cashRemaining / visits : cashRemaining;
-    html += `<div class="financing-box"><strong>US / Canada installment logic</strong><br>Package + 20%: ${money(financedPackage)}<br>Installments: ${money(installment)} (up to ${DUTY_PRICING.financing.maximumTermMonths} months)<br>Remaining cash: ${money(cashRemaining)}${visits > 1 ? ` / ${visits} visits = ${money(cashPerVisit)} each visit` : ` — payable at the single visit`}</div>`;
+    const installment = Math.min(
+      DUTY_PRICING.financing.installmentAmount,
+      financedPackage
+    );
+
+    const cashRemaining = Math.max(
+      0,
+      financedPackage - installment
+    );
+
+    const visits = optionSummaries.length
+      ? Math.max(...optionSummaries.map(item => item.visits))
+      : 2;
+
+    const cashPerVisit = visits > 1
+      ? cashRemaining / visits
+      : cashRemaining;
+
+    html += `
+      <div class="financing-box">
+        <strong>US / Canada installment logic</strong><br>
+        Package + 20%: ${money(financedPackage)}<br>
+        Installments: ${money(installment)}
+        (up to ${DUTY_PRICING.financing.maximumTermMonths} months)<br>
+        Remaining cash: ${money(cashRemaining)}
+        ${
+          visits > 1
+            ? ` / ${visits} visits = ${money(cashPerVisit)} each visit`
+            : ` — payable at the single visit`
+        }
+      </div>
+    `;
   }
 
   $('summaryLines').innerHTML = html;
