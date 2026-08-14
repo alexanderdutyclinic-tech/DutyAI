@@ -1050,95 +1050,243 @@ function calculateOption(card){
 }
 function recalculateQuotation(){
   const cards = [...document.querySelectorAll('.quotation-option')];
+
   let baseTotal = 0;
   let implantCase = false;
+
   const optionSummaries = [];
 
- cards.forEach(card=>{
+  cards.forEach(card => {
     const result = calculateOption(card);
+
     baseTotal += result.subtotal;
     implantCase = implantCase || result.hasImplants;
+
     optionSummaries.push({
-      name: card.querySelector('.option-name').value || 'Option',
-      subtotal: result.subtotal,
-      visits: result.visits
+      name:
+        card.querySelector('.option-name')?.value || 'Option',
+
+      subtotal:
+        result.subtotal,
+
+      visits:
+        result.visits,
+
+      visit1Total:
+        result.visit1Total,
+
+      visit2Total:
+        result.visit2Total
     });
   });
 
-  const markedTotal = baseTotal 
+  // =========================================
+  // COORDINATOR MARKUP
+  // =========================================
 
-  const country = $('patientCountry').value;
-  const paymentMethod = $('paymentMethod').value;
-const eligible =
-  paymentMethod === 'installments' &&
-  DUTY_PRICING.financing.eligibleCountries.includes(country);
+  updateMarkupOptions(baseTotal);
+
+  const markup =
+    Math.max(
+      0,
+      numberValue($('markupPercent').value)
+    );
+
+  const markedTotal =
+    baseTotal * (1 + markup / 100);
+
+  // =========================================
+  // PAYMENT METHOD
+  // =========================================
+
+  const country =
+    $('patientCountry').value;
+
+  const paymentMethod =
+    $('paymentMethod').value;
+
+  const eligible =
+    paymentMethod === 'installments' &&
+    DUTY_PRICING.financing.eligibleCountries.includes(country);
+
+  // =========================================
+  // OPTION SUMMARY
+  // =========================================
 
   let html = optionSummaries.length
-    ? optionSummaries.map(item =>
-        `<div class="summary-row">
-          <span>${escapeHtml(item.name)} 
-            <small>(${item.visits} visit${item.visits === 1 ? '' : 's'})</small>
+    ? optionSummaries.map(item => `
+
+        <div class="summary-row">
+          <span>
+            ${escapeHtml(item.name)}
+            <small>
+              (${item.visits} visit${item.visits === 1 ? '' : 's'})
+            </small>
           </span>
-          <strong>${money(item.subtotal)}</strong>
-        </div>`
-      ).join('')
+
+          <strong>
+            ${money(item.subtotal)}
+          </strong>
+        </div>
+
+      `).join('')
+
     : '<p>No quotation options added yet.</p>';
 
-  // Patient-facing total — no markup information shown
+  // =========================================
+  // VISIT PAYMENT BREAKDOWN
+  // =========================================
+
+  optionSummaries.forEach(item => {
+
+    if(item.visits === 1){
+
+      html += `
+        <div class="payment-breakdown">
+
+          <h4>Payment — 1 visit</h4>
+
+          <div class="summary-row">
+            <span>Visit 1</span>
+            <strong>
+              ${money(item.visit1Total)}
+            </strong>
+          </div>
+
+        </div>
+      `;
+
+    } else {
+
+      html += `
+        <div class="payment-breakdown">
+
+          <h4>Payment by visit</h4>
+
+          <div class="summary-row">
+            <span>Visit 1</span>
+            <strong>
+              ${money(item.visit1Total)}
+            </strong>
+          </div>
+
+          <div class="summary-row">
+            <span>Visit 2</span>
+            <strong>
+              ${money(item.visit2Total)}
+            </strong>
+          </div>
+
+        </div>
+      `;
+    }
+  });
+
+  // =========================================
+  // PATIENT TOTAL
+  // =========================================
+
   html += `
     <div class="summary-row grand-total">
-      <span>Patient quotation total</span>
-      <strong>${money(markedTotal)}</strong>
+      <span>
+        Patient quotation total
+      </span>
+
+      <strong>
+        ${money(markedTotal)}
+      </strong>
     </div>
   `;
 
+  // =========================================
+  // IMPLANT RULE
+  // =========================================
+
   if(implantCase){
+
     html += `
       <div class="rule-note">
-        Implant case: default is 2 visits. A 1-visit plan requires explicit coordinator confirmation.
+        Implant case: default is 2 visits.
+        A 1-visit plan requires explicit coordinator confirmation.
       </div>
     `;
   }
 
+  // =========================================
+  // INSTALLMENT MODE
+  // =========================================
+
   if(eligible){
-    const financedPackage = markedTotal * 1.20;
-    const installment = Math.min(
-      DUTY_PRICING.financing.installmentAmount,
-      financedPackage
-    );
 
-    const cashRemaining = Math.max(
-      0,
-      financedPackage - installment
-    );
+    const financedPackage =
+      markedTotal * 1.20;
 
-    const visits = optionSummaries.length
-      ? Math.max(...optionSummaries.map(item => item.visits))
-      : 2;
+    const installment =
+      Math.min(
+        DUTY_PRICING.financing.installmentAmount,
+        financedPackage
+      );
 
-    const cashPerVisit = visits > 1
-      ? cashRemaining / visits
-      : cashRemaining;
+    const cashRemaining =
+      Math.max(
+        0,
+        financedPackage - installment
+      );
+
+    const visits =
+      optionSummaries.length
+        ? Math.max(
+            ...optionSummaries.map(
+              item => item.visits
+            )
+          )
+        : 2;
+
+    const cashPerVisit =
+      visits > 1
+        ? cashRemaining / visits
+        : cashRemaining;
 
     html += `
       <div class="financing-box">
-        <strong>US / Canada installment logic</strong><br>
-        Package + 20%: ${money(financedPackage)}<br>
-        Installments: ${money(installment)}
-        (up to ${DUTY_PRICING.financing.maximumTermMonths} months)<br>
-        Remaining cash: ${money(cashRemaining)}
+
+        <strong>
+          US / Canada installment logic
+        </strong>
+
+        <br>
+
+        Package + 20%:
+        ${money(financedPackage)}
+
+        <br>
+
+        Installments:
+        ${money(installment)}
+        (up to ${DUTY_PRICING.financing.maximumTermMonths} months)
+
+        <br>
+
+        Remaining cash:
+        ${money(cashRemaining)}
+
         ${
           visits > 1
-            ? ` / ${visits} visits = ${money(cashPerVisit)} each visit`
+            ? ` / ${visits} visits =
+               ${money(cashPerVisit)} each visit`
             : ` — payable at the single visit`
         }
+
       </div>
     `;
   }
 
+  // =========================================
+  // DISPLAY
+  // =========================================
+
   $('summaryLines').innerHTML = html;
 }
-
 function numberValue(value){
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : 0;
