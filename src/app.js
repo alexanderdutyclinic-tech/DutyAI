@@ -153,23 +153,66 @@ function addQuotationOption(treatmentData = confirmedTreatmentData){
       )
       .join('');
 
-  const procedureOptions =
-    DUTY_PRICING.procedures
-      .map(item =>
-        `<label class="check-item">
-          <input
-            type="checkbox"
-            class="procedure-choice"
-            data-price="${item.price}"
-            value="${item.id}"
-          >
-          ${escapeHtml(item.name)}
-          ${item.unit ? ` (${escapeHtml(item.unit)})` : ''}
-          — $${item.price}
-        </label>`
-      )
-      .join('');
+ const procedureOptions =
+  DUTY_PRICING.procedures
+    .map(item => {
 
+      const unit =
+        item.unit || '';
+
+      const quantityBased =
+        Boolean(unit);
+
+      return `
+        <div class="procedure-item">
+
+          <label class="check-item">
+
+            <input
+              type="checkbox"
+              class="procedure-choice"
+              data-price="${item.price}"
+              data-unit="${escapeHtml(unit)}"
+              value="${item.id}"
+            >
+
+            ${escapeHtml(item.name)}
+            ${
+              unit
+                ? ` — ${money(item.price)} / ${escapeHtml(unit)}`
+                : ` — ${money(item.price)}`
+            }
+
+          </label>
+
+          ${
+            quantityBased
+              ? `
+                <div class="procedure-quantity hidden">
+
+                  <label>
+                    Quantity (${escapeHtml(unit)})
+                  </label>
+
+                  <input
+                    type="number"
+                    class="procedure-quantity-input"
+                    data-procedure-id="${item.id}"
+                    min="0"
+                    step="0.5"
+                    value="1"
+                  >
+
+                </div>
+              `
+              : ''
+          }
+
+        </div>
+      `;
+
+    })
+    .join('');
   // =========================================
   // HOTEL OPTIONS
   // =========================================
@@ -257,16 +300,21 @@ function addQuotationOption(treatmentData = confirmedTreatmentData){
 
         <label>Implant markup (internal)</label>
 
-        <select class="implant-markup">
-          <option value="">
-            Select markup
-          </option>
-        </select>
+<div class="percentage-input">
+  <input
+    class="implant-markup"
+    type="number"
+    min="0"
+    max="100"
+    step="1"
+    value="25"
+  >
+  <span>%</span>
+</div>
 
-        <small class="warning-text implant-markup-guidance">
-          Select an implant system to determine the allowed markup range.
-        </small>
-
+<small class="warning-text implant-markup-guidance">
+  Coordinator can adjust the markup from 0% to 100%.
+</small>
       </div>
 
 
@@ -298,19 +346,23 @@ function addQuotationOption(treatmentData = confirmedTreatmentData){
 
         </select>
 
-        <label>Crown markup (internal)</label>
+       <label>Crown markup (internal)</label>
 
-        <select class="crown-markup">
+<div class="percentage-input">
+  <input
+    class="crown-markup"
+    type="number"
+    min="0"
+    max="100"
+    step="1"
+    value="25"
+  >
+  <span>%</span>
+</div>
 
-          <option value="">
-            Select markup
-          </option>
-
-        </select>
-
-        <small class="warning-text crown-markup-guidance">
-          Select a crown material to determine the allowed markup range.
-        </small>
+<small class="warning-text crown-markup-guidance">
+  Coordinator can adjust the markup from 0% to 100%.
+</small>
 
       </div>
 
@@ -606,111 +658,362 @@ function renumberQuotationOptions(){
 }
 
 function bindOptionEvents(card){
-  // Remove option
-  card.querySelector('.remove-option').addEventListener('click',()=>{
-    card.remove();
-    recalculateQuotation();
-  });
 
-  // Visit plan
-  const visitPlan = card.querySelector('.visit-plan');
-  const visitTemplate1 = card.querySelector('.visit-template-1');
-  const visitTemplate2 = card.querySelector('.visit-template-2');
+  // =========================================
+  // REMOVE OPTION
+  // =========================================
 
-  function updateVisitPlan(){
-    const visits = visitPlan.value;
+  const removeButton =
+    card.querySelector('.remove-option');
 
-    visitTemplate1.classList.toggle('hidden', visits !== '1');
-    visitTemplate2.classList.toggle('hidden', visits !== '2');
+  if(removeButton){
 
-    recalculateQuotation();
+    removeButton.addEventListener('click', () => {
+
+      card.remove();
+
+      recalculateQuotation();
+
+    });
+
   }
 
-  visitPlan.addEventListener('change', updateVisitPlan);
 
-  // Implant system and markup
-  const implantSelect = card.querySelector('.implant-brand');
-  const implantMarkupSelect = card.querySelector('.implant-markup');
-  const implantMarkupGuidance = card.querySelector('.implant-markup-guidance');
+  // =========================================
+  // VISIT PLAN
+  // =========================================
 
-  implantSelect.addEventListener('change',()=>{
-    const implant = getSelected(
-      DUTY_PRICING.implants,
-      implantSelect.value
-    );
+  const visitPlan =
+    card.querySelector('.visit-plan');
 
-    if(!implant){
-      implantMarkupSelect.innerHTML =
-        '<option value="">Select markup</option>';
+  const visitTemplate1 =
+    card.querySelector('.visit-template-1');
 
-      implantMarkupGuidance.textContent =
-        'Select an implant system to determine the allowed markup range.';
+  const visitTemplate2 =
+    card.querySelector('.visit-template-2');
 
-      recalculateQuotation();
+
+  function updateVisitPlan(){
+
+    if(!visitPlan){
       return;
     }
 
-    const markupOptions = getUnitMarkupOptions(implant.price);
+    const visits =
+      visitPlan.value;
 
-    implantMarkupSelect.innerHTML = markupOptions
-      .map(markup => `<option value="${markup}">${markup}%</option>`)
-      .join('');
 
-    implantMarkupGuidance.textContent =
-      `Base price: ${money(implant.price)} per implant. ` +
-      `Allowed markup: ${markupOptions.join('%, ')}%.`;
+    if(visitTemplate1){
 
-    recalculateQuotation();
-  });
+      visitTemplate1.classList.toggle(
+        'hidden',
+        visits !== '1'
+      );
 
-  implantMarkupSelect.addEventListener('change',recalculateQuotation);
-
-  // Crown system and markup
-  const crownSelect = card.querySelector('.crown-brand');
-  const crownMarkupSelect = card.querySelector('.crown-markup');
-  const crownMarkupGuidance = card.querySelector('.crown-markup-guidance');
-
-  crownSelect.addEventListener('change',()=>{
-    const crown = getSelected(
-      DUTY_PRICING.crowns,
-      crownSelect.value
-    );
-
-    if(!crown){
-      crownMarkupSelect.innerHTML =
-        '<option value="">Select markup</option>';
-
-      crownMarkupGuidance.textContent =
-        'Select a crown material to determine the allowed markup range.';
-
-      recalculateQuotation();
-      return;
     }
 
-    const markupOptions = getUnitMarkupOptions(crown.price);
 
-    crownMarkupSelect.innerHTML = markupOptions
-      .map(markup => `<option value="${markup}">${markup}%</option>`)
-      .join('');
+    if(visitTemplate2){
 
-    crownMarkupGuidance.textContent =
-      `Base price: ${money(crown.price)} per crown. ` +
-      `Allowed markup: ${markupOptions.join('%, ')}%.`;
+      visitTemplate2.classList.toggle(
+        'hidden',
+        visits !== '2'
+      );
+
+    }
+
 
     recalculateQuotation();
-  });
 
-  crownMarkupSelect.addEventListener('change',recalculateQuotation);
+  }
 
-  // All other inputs/selects
-  card.querySelectorAll('input, select').forEach(input=>{
-    input.addEventListener('input',recalculateQuotation);
-    input.addEventListener('change',recalculateQuotation);
-  });
 
-  // Initialize the correct visit template
+  if(visitPlan){
+
+    visitPlan.addEventListener(
+      'change',
+      updateVisitPlan
+    );
+
+  }
+
+
+  // =========================================
+  // IMPLANT SYSTEM
+  // =========================================
+
+  const implantSelect =
+    card.querySelector('.implant-brand');
+
+  const implantMarkupInput =
+    card.querySelector('.implant-markup');
+
+  const implantMarkupGuidance =
+    card.querySelector(
+      '.implant-markup-guidance'
+    );
+
+
+  if(implantSelect){
+
+    implantSelect.addEventListener(
+      'change',
+      () => {
+
+        const implant =
+          getSelected(
+            DUTY_PRICING.implants,
+            implantSelect.value
+          );
+
+
+        if(!implant){
+
+          if(implantMarkupGuidance){
+
+            implantMarkupGuidance.textContent =
+              'Select an implant system to see its base price.';
+
+          }
+
+          recalculateQuotation();
+
+          return;
+
+        }
+
+
+        if(implantMarkupGuidance){
+
+          implantMarkupGuidance.textContent =
+            `Base price: ${money(implant.price)} per implant. ` +
+            `Coordinator markup: editable.`;
+
+        }
+
+
+        recalculateQuotation();
+
+      }
+    );
+
+  }
+
+
+  // =========================================
+  // IMPLANT MARKUP
+  // =========================================
+
+  if(implantMarkupInput){
+
+    implantMarkupInput.addEventListener(
+      'input',
+      recalculateQuotation
+    );
+
+    implantMarkupInput.addEventListener(
+      'change',
+      recalculateQuotation
+    );
+
+  }
+
+
+  // =========================================
+  // CROWN SYSTEM
+  // =========================================
+
+  const crownSelect =
+    card.querySelector('.crown-brand');
+
+  const crownMarkupInput =
+    card.querySelector('.crown-markup');
+
+  const crownMarkupGuidance =
+    card.querySelector(
+      '.crown-markup-guidance'
+    );
+
+
+  if(crownSelect){
+
+    crownSelect.addEventListener(
+      'change',
+      () => {
+
+        const crown =
+          getSelected(
+            DUTY_PRICING.crowns,
+            crownSelect.value
+          );
+
+
+        if(!crown){
+
+          if(crownMarkupGuidance){
+
+            crownMarkupGuidance.textContent =
+              'Select a crown material to see its base price.';
+
+          }
+
+          recalculateQuotation();
+
+          return;
+
+        }
+
+
+        if(crownMarkupGuidance){
+
+          crownMarkupGuidance.textContent =
+            `Base price: ${money(crown.price)} per crown. ` +
+            `Coordinator markup: editable.`;
+
+        }
+
+
+        recalculateQuotation();
+
+      }
+    );
+
+  }
+
+
+  // =========================================
+  // CROWN MARKUP
+  // =========================================
+
+  if(crownMarkupInput){
+
+    crownMarkupInput.addEventListener(
+      'input',
+      recalculateQuotation
+    );
+
+    crownMarkupInput.addEventListener(
+      'change',
+      recalculateQuotation
+    );
+
+  }
+
+
+  // =========================================
+  // BONE GRAFTING / PROCEDURE QUANTITY
+  // =========================================
+
+  card
+    .querySelectorAll('.procedure-choice')
+    .forEach(choice => {
+
+      choice.addEventListener(
+        'change',
+        () => {
+
+          const procedureItem =
+            choice.closest(
+              '.procedure-item'
+            );
+
+
+          if(!procedureItem){
+            return;
+          }
+
+
+          const quantityBox =
+            procedureItem.querySelector(
+              '.procedure-quantity'
+            );
+
+
+          if(!quantityBox){
+            return;
+          }
+
+
+          quantityBox.classList.toggle(
+            'hidden',
+            !choice.checked
+          );
+
+
+          recalculateQuotation();
+
+        }
+      );
+
+    });
+
+
+  // =========================================
+  // INITIAL PROCEDURE QUANTITY VISIBILITY
+  // =========================================
+
+  card
+    .querySelectorAll('.procedure-choice')
+    .forEach(choice => {
+
+      const procedureItem =
+        choice.closest(
+          '.procedure-item'
+        );
+
+
+      if(!procedureItem){
+        return;
+      }
+
+
+      const quantityBox =
+        procedureItem.querySelector(
+          '.procedure-quantity'
+        );
+
+
+      if(quantityBox){
+
+        quantityBox.classList.toggle(
+          'hidden',
+          !choice.checked
+        );
+
+      }
+
+    });
+
+
+  // =========================================
+  // ALL OTHER INPUTS / SELECTS
+  // =========================================
+
+  card
+    .querySelectorAll('input, select')
+    .forEach(input => {
+
+      input.addEventListener(
+        'input',
+        recalculateQuotation
+      );
+
+      input.addEventListener(
+        'change',
+        recalculateQuotation
+      );
+
+    });
+
+
+  // =========================================
+  // INITIALIZE VISIT TEMPLATE
+  // =========================================
+
   updateVisitPlan();
+
 }
+
 
 function updateVisitFields(card){
   const oneVisit = card.querySelector('.one-visit-confirm').checked;
@@ -827,28 +1130,56 @@ function calculateOption(card){
     visit2Crowns * crownUnitPrice;
 
 
-  // =========================================
-  // ADDITIONAL PROCEDURES
-  // =========================================
+ // =========================================
+// ADDITIONAL PROCEDURES
+// =========================================
 
-  let proceduresTotal = 0;
+let proceduresTotal = 0;
 
-  card
-    .querySelectorAll('.procedure-choice:checked')
-    .forEach(choice => {
-      proceduresTotal += numberValue(
-        choice.dataset.price
-      );
-    });
+card
+  .querySelectorAll('.procedure-choice:checked')
+  .forEach(choice => {
+
+    const basePrice =
+      numberValue(choice.dataset.price);
+
+    const unit =
+      choice.dataset.unit || '';
+
+    // Procedures with a unit are quantity-based.
+    // Example:
+    // Bone Grafting = $400 / cc
+    if(unit){
+
+      const quantityInput =
+        card.querySelector(
+          `.procedure-quantity-input[data-procedure-id="${choice.value}"]`
+        );
+
+      const quantity =
+        Math.max(
+          0,
+          numberValue(quantityInput?.value || 1)
+        );
+
+      proceduresTotal +=
+        basePrice * quantity;
+
+    } else {
+
+      // Normal procedures remain fixed-price.
+      proceduresTotal += basePrice;
+
+    }
+
+  });
 
 
-  // For now, procedures are performed
-  // during Visit 1.
-  const visit1Procedures =
-    proceduresTotal;
+// Procedures are currently assigned to Visit 1.
+const visit1Procedures =
+  proceduresTotal;
 
-  const visit2Procedures = 0;
-
+const visit2Procedures = 0;
 
   // =========================================
   // BRIDGE
