@@ -743,10 +743,8 @@ function getSelected(items, id){
 }
 
 function calculateOption(card){
-  let subtotal = 0;
-
   // =========================================
-  // BASIC TREATMENT DATA
+  // BASIC DATA
   // =========================================
 
   const implantCount = numberValue(
@@ -757,13 +755,13 @@ function calculateOption(card){
     card.querySelector('.crown-count')?.value
   );
 
-  const visitPlan =
-    card.querySelector('.visit-plan')?.value || '2';
+  const visits = Number(
+    card.querySelector('.visit-plan')?.value || 2
+  );
 
-  const visits = Number(visitPlan);
 
   // =========================================
-  // IMPLANT PRICE + MARKUP
+  // IMPLANT PRICE
   // =========================================
 
   const implant = getSelected(
@@ -779,11 +777,12 @@ function calculateOption(card){
     ? implant.price * (1 + implantMarkup / 100)
     : 0;
 
-  const totalImplantPrice =
+  const implantTotal =
     implantCount * implantUnitPrice;
 
+
   // =========================================
-  // CROWN PRICE + MARKUP
+  // CROWN PRICE
   // =========================================
 
   const crown = getSelected(
@@ -798,6 +797,7 @@ function calculateOption(card){
   const crownUnitPrice = crown
     ? crown.price * (1 + crownMarkup / 100)
     : 0;
+
 
   // =========================================
   // CROWNS BY VISIT
@@ -819,11 +819,13 @@ function calculateOption(card){
       crownCount - visit1Crowns;
   }
 
-  const visit1CrownPrice =
+
+  const visit1CrownTotal =
     visit1Crowns * crownUnitPrice;
 
-  const visit2CrownPrice =
+  const visit2CrownTotal =
     visit2Crowns * crownUnitPrice;
+
 
   // =========================================
   // ADDITIONAL PROCEDURES
@@ -834,12 +836,19 @@ function calculateOption(card){
   card
     .querySelectorAll('.procedure-choice:checked')
     .forEach(choice => {
-      proceduresTotal += numberValue(choice.dataset.price);
+      proceduresTotal += numberValue(
+        choice.dataset.price
+      );
     });
 
-  // Procedures currently assigned to Visit 1.
-  const visit1Procedures = proceduresTotal;
+
+  // For now, procedures are performed
+  // during Visit 1.
+  const visit1Procedures =
+    proceduresTotal;
+
   const visit2Procedures = 0;
+
 
   // =========================================
   // BRIDGE
@@ -853,11 +862,15 @@ function calculateOption(card){
       ? numberValue(bridgeField.value)
       : 0;
 
-  const visit1Bridge = bridgePrice;
+  // Bridge is currently assigned to Visit 1.
+  const visit1Bridge =
+    bridgePrice;
+
   const visit2Bridge = 0;
 
+
   // =========================================
-  // HOTEL HELPER
+  // HOTEL CALCULATOR
   // =========================================
 
   function calculateHotel(
@@ -865,79 +878,127 @@ function calculateOption(card){
     roomType,
     nights
   ){
+
     if(!hotelId || nights <= 0){
       return 0;
     }
 
-    const hotel = DUTY_PRICING.hotels.find(
-      item => item.id === hotelId
-    );
+    const hotel =
+      DUTY_PRICING.hotels.find(
+        item => item.id === hotelId
+      );
 
     if(!hotel){
       return 0;
     }
 
+
     let nightlyPrice = null;
 
+
+    // Hotels with special room structures
     if(hotel.roomOptions){
-      const room = hotel.roomOptions.find(
-        item =>
-          item.name.toLowerCase().includes(roomType)
-      );
+
+      const room =
+        hotel.roomOptions.find(item => {
+
+          const name =
+            item.name.toLowerCase();
+
+          return name.includes(
+            roomType.toLowerCase()
+          );
+        });
 
       if(room){
-        nightlyPrice = room.price;
+        nightlyPrice =
+          Number(room.price);
       }
+
     } else {
-      nightlyPrice = hotel[roomType];
+
+      nightlyPrice =
+        Number(hotel[roomType]);
+
     }
 
+
     if(
-      nightlyPrice === null ||
-      nightlyPrice === undefined ||
-      !Number.isFinite(Number(nightlyPrice))
+      !Number.isFinite(nightlyPrice) ||
+      nightlyPrice < 0
     ){
       return 0;
     }
 
-    return Number(nightlyPrice) * nights;
+    return nightlyPrice * nights;
   }
 
+
   // =========================================
-  // HOTEL — VISIT 1
+  // HOTEL BY VISIT
   // =========================================
 
-  let hotelFirst = 0;
-  let hotelSecond = 0;
+  let visit1Hotel = 0;
+  let visit2Hotel = 0;
+
 
   if(visits === 1){
 
-    hotelFirst = calculateHotel(
-      card.querySelector('.one-visit-hotel')?.value,
-      card.querySelector('.one-visit-room')?.value || 'single',
-      numberValue(
-        card.querySelector('.one-visit-nights')?.value
-      )
-    );
+    visit1Hotel =
+      calculateHotel(
+        card.querySelector(
+          '.one-visit-hotel'
+        )?.value,
+
+        card.querySelector(
+          '.one-visit-room'
+        )?.value || 'single',
+
+        numberValue(
+          card.querySelector(
+            '.one-visit-nights'
+          )?.value
+        )
+      );
 
   } else {
 
-    hotelFirst = calculateHotel(
-      card.querySelector('.visit1-hotel')?.value,
-      card.querySelector('.visit1-room')?.value || 'single',
-      numberValue(
-        card.querySelector('.visit1-nights')?.value
-      )
-    );
+    visit1Hotel =
+      calculateHotel(
+        card.querySelector(
+          '.visit1-hotel'
+        )?.value,
 
-    hotelSecond = calculateHotel(
-      card.querySelector('.visit2-hotel')?.value,
-      card.querySelector('.visit2-room')?.value || 'single',
-      numberValue(
-        card.querySelector('.visit2-nights')?.value
-      )
-    );
+        card.querySelector(
+          '.visit1-room'
+        )?.value || 'single',
+
+        numberValue(
+          card.querySelector(
+            '.visit1-nights'
+          )?.value
+        )
+      );
+
+
+    visit2Hotel =
+      calculateHotel(
+        card.querySelector(
+          '.visit2-hotel'
+        )?.value,
+
+        card.querySelector(
+          '.visit2-room'
+        )?.value || 'single',
+
+        numberValue(
+          card.querySelector(
+            '.visit2-nights'
+          )?.value
+        )
+      );
   }
+
 
   // =========================================
   // VIP TRANSFER
@@ -945,11 +1006,17 @@ function calculateOption(card){
 
   const transfer =
     numberValue(
-      card.querySelector('.transfer-option')?.value
+      card.querySelector(
+        '.transfer-option'
+      )?.value
     );
 
-  const visit1Transfer = transfer;
+  // Transfer is currently Visit 1.
+  const visit1Transfer =
+    transfer;
+
   const visit2Transfer = 0;
+
 
   // =========================================
   // DENTAL PROSTHESIS
@@ -957,60 +1024,102 @@ function calculateOption(card){
 
   const prosthesis =
     numberValue(
-      card.querySelector('.prosthesis-option')?.value
+      card.querySelector(
+        '.prosthesis-option'
+      )?.value
     );
 
-  const visit1Prosthesis = prosthesis;
+  // Prosthesis is currently Visit 1.
+  const visit1Prosthesis =
+    prosthesis;
+
   const visit2Prosthesis = 0;
 
-  // Translator is always free.
+
+  // =========================================
+  // TRANSLATOR
+  // =========================================
+
+  // Always included and free.
   const translator = 0;
 
+
   // =========================================
-  // VISIT TOTALS
+  // DENTAL TOTAL BY VISIT
   // =========================================
 
-  const visit1Total =
-    totalImplantPrice +
-    visit1CrownPrice +
+  const visit1Dental =
+    implantTotal +
+    visit1CrownTotal +
     visit1Procedures +
-    visit1Bridge +
-    hotelFirst +
+    visit1Bridge;
+
+  const visit2Dental =
+    visit2CrownTotal +
+    visit2Procedures +
+    visit2Bridge;
+
+
+  // =========================================
+  // SERVICES BY VISIT
+  // =========================================
+
+  const visit1Services =
+    visit1Hotel +
     visit1Transfer +
     visit1Prosthesis;
 
+  const visit2Services =
+    visit2Hotel +
+    visit2Transfer +
+    visit2Prosthesis;
+
+
+  // =========================================
+  // FINAL VISIT TOTALS
+  // =========================================
+
+  const visit1Total =
+    visit1Dental +
+    visit1Services;
+
   const visit2Total =
-    visit2CrownPrice +
-    visit2Procedures +
-    visit2Bridge +
-    hotelSecond +
-    visit2Transfer;
+    visit2Dental +
+    visit2Services;
+
 
   // =========================================
   // OPTION TOTAL
   // =========================================
 
-  subtotal =
+  const subtotal =
     visit1Total +
     visit2Total;
 
+
   // =========================================
-  // DISPLAY
+  // DISPLAY OPTION SUBTOTAL
   // =========================================
 
   const subtotalElement =
-    card.querySelector('.option-subtotal');
+    card.querySelector(
+      '.option-subtotal'
+    );
 
   if(subtotalElement){
+
     subtotalElement.textContent =
       money(subtotal);
+
   }
 
+
   // =========================================
-  // RETURN
+  // RETURN COMPLETE BREAKDOWN
   // =========================================
 
   return {
+
     subtotal,
 
     hasImplants:
@@ -1024,6 +1133,11 @@ function calculateOption(card){
 
     visits,
 
+    // Dental
+    visit1Dental,
+    visit2Dental,
+
+    // Treatment quantities
     visit1Implants:
       implantCount,
 
@@ -1033,263 +1147,406 @@ function calculateOption(card){
     visit1Crowns,
     visit2Crowns,
 
+    // Services
+    visit1Hotel,
+    visit2Hotel,
+
+    visit1Transfer,
+    visit2Transfer,
+
+    visit1Prosthesis,
+    visit2Prosthesis,
+
+    translator,
+
+    // Combined
+    visit1Services,
+    visit2Services,
+
     visit1Total,
     visit2Total,
 
+    // Unit prices
     implantUnitPrice,
-    crownUnitPrice,
+    crownUnitPrice
 
-    hotelFirst,
-    hotelSecond,
-
-    transfer,
-    prosthesis,
-
-    translator
   };
 }
+
+function updateMarkupOptions(baseTotal){
+
+  const markupSelect =
+    $('markupPercent');
+
+  if(!markupSelect){
+    return;
+  }
+
+  const price =
+    Number(baseTotal) || 0;
+
+  let options = [];
+
+  if(price <= 350){
+
+    options = [20, 25, 30, 35];
+
+  } else if(price <= 750){
+
+    options = [10, 12, 15];
+
+  } else {
+
+    options = [5, 7];
+
+  }
+
+  const currentValue =
+    markupSelect.value;
+
+  markupSelect.innerHTML =
+    options
+      .map(
+        value =>
+          `<option value="${value}">
+            ${value}%
+          </option>`
+      )
+      .join('');
+
+  if(
+    options.includes(
+      Number(currentValue)
+    )
+  ){
+
+    markupSelect.value =
+      currentValue;
+
+  } else {
+
+    markupSelect.value =
+      String(options[0]);
+
+  }
+}
+
 function recalculateQuotation(){
-  const cards = [...document.querySelectorAll('.quotation-option')];
 
-  let baseTotal = 0;
-  let implantCase = false;
-
-  const optionSummaries = [];
-
-  cards.forEach(card => {
-    const result = calculateOption(card);
-
-    baseTotal += result.subtotal;
-    implantCase = implantCase || result.hasImplants;
-
-    optionSummaries.push({
-      name:
-        card.querySelector('.option-name')?.value || 'Option',
-
-      subtotal:
-        result.subtotal,
-
-      visits:
-        result.visits,
-
-      visit1Total:
-        result.visit1Total,
-
-      visit2Total:
-        result.visit2Total
-    });
-  });
-
-  // =========================================
-  // COORDINATOR MARKUP
-  // =========================================
-
-  updateMarkupOptions(baseTotal);
-
-  const markup =
-    Math.max(
-      0,
-      numberValue($('markupPercent').value)
-    );
-
-  const markedTotal =
-    baseTotal * (1 + markup / 100);
-
-  // =========================================
-  // PAYMENT METHOD
-  // =========================================
+  const cards = [
+    ...document.querySelectorAll('.quotation-option')
+  ];
 
   const country =
-    $('patientCountry').value;
+    $('patientCountry')?.value || 'Other';
 
   const paymentMethod =
-    $('paymentMethod').value;
+    $('paymentMethod')?.value || 'visit-payments';
 
-  const eligible =
+  const installmentEligible =
     paymentMethod === 'installments' &&
     DUTY_PRICING.financing.eligibleCountries.includes(country);
 
+  let html = '';
+
   // =========================================
-  // OPTION SUMMARY
+  // NO OPTIONS
   // =========================================
 
-  let html = optionSummaries.length
-    ? optionSummaries.map(item => `
+  if(!cards.length){
+
+    $('summaryLines').innerHTML =
+      '<p>No quotation options added yet.</p>';
+
+    return;
+  }
+
+
+  // =========================================
+  // EACH OPTION IS INDEPENDENT
+  // =========================================
+
+  cards.forEach((card, index) => {
+
+    const result =
+      calculateOption(card);
+
+    const optionName =
+      card.querySelector('.option-name')?.value
+      || `Option ${index + 1}`;
+
+
+    html += `
+
+      <div class="quotation-summary-option">
+
+        <h3>
+          ${escapeHtml(optionName)}
+        </h3>
 
         <div class="summary-row">
           <span>
-            ${escapeHtml(item.name)}
-            <small>
-              (${item.visits} visit${item.visits === 1 ? '' : 's'})
-            </small>
+            Option total
           </span>
 
           <strong>
-            ${money(item.subtotal)}
+            ${money(result.subtotal)}
           </strong>
         </div>
 
-      `).join('')
+    `;
 
-    : '<p>No quotation options added yet.</p>';
 
-  // =========================================
-  // VISIT PAYMENT BREAKDOWN
-  // =========================================
+    // =======================================
+    // NORMAL PAYMENT — PAY BY VISITS
+    // =======================================
 
-  optionSummaries.forEach(item => {
+    if(paymentMethod === 'visit-payments'){
 
-    if(item.visits === 1){
+      if(result.visits === 1){
 
-      html += `
-        <div class="payment-breakdown">
+        html += `
 
-          <h4>Payment — 1 visit</h4>
+          <div class="payment-breakdown">
 
-          <div class="summary-row">
-            <span>Visit 1</span>
-            <strong>
-              ${money(item.visit1Total)}
-            </strong>
+            <h4>Payment — 1 visit</h4>
+
+            <div class="summary-row">
+
+              <span>
+                Visit 1
+              </span>
+
+              <strong>
+                ${money(result.visit1Total)}
+              </strong>
+
+            </div>
+
           </div>
 
-        </div>
-      `;
+        `;
 
-    } else {
+      } else {
 
-      html += `
-        <div class="payment-breakdown">
+        html += `
 
-          <h4>Payment by visit</h4>
+          <div class="payment-breakdown">
 
-          <div class="summary-row">
-            <span>Visit 1</span>
-            <strong>
-              ${money(item.visit1Total)}
-            </strong>
+            <h4>Payment by visit</h4>
+
+            <div class="summary-row">
+
+              <span>
+                Visit 1
+              </span>
+
+              <strong>
+                ${money(result.visit1Total)}
+              </strong>
+
+            </div>
+
+            <div class="summary-row">
+
+              <span>
+                Visit 2
+              </span>
+
+              <strong>
+                ${money(result.visit2Total)}
+              </strong>
+
+            </div>
+
           </div>
 
-          <div class="summary-row">
-            <span>Visit 2</span>
-            <strong>
-              ${money(item.visit2Total)}
-            </strong>
-          </div>
+        `;
 
-        </div>
-      `;
+      }
+
     }
+
+
+    // =======================================
+    // US / CANADA INSTALLMENTS
+    // =======================================
+
+    if(installmentEligible){
+
+      const financedPackage =
+        result.subtotal *
+        (
+          1 +
+          DUTY_PRICING.financing.markupPercent / 100
+        );
+
+
+      const installment =
+        Math.min(
+          DUTY_PRICING.financing.installmentAmount,
+          financedPackage
+        );
+
+
+      const cashRemaining =
+        Math.max(
+          0,
+          financedPackage - installment
+        );
+
+
+      const cashPerVisit =
+        result.visits > 1
+          ? cashRemaining / result.visits
+          : cashRemaining;
+
+
+      html += `
+
+        <div class="financing-box">
+
+          <h4>
+            US / Canada installment plan
+          </h4>
+
+          <div class="summary-row">
+
+            <span>
+              Package + ${DUTY_PRICING.financing.markupPercent}%
+            </span>
+
+            <strong>
+              ${money(financedPackage)}
+            </strong>
+
+          </div>
+
+          <div class="summary-row">
+
+            <span>
+              Installment
+            </span>
+
+            <strong>
+              ${money(installment)}
+            </strong>
+
+          </div>
+
+          <div class="summary-row">
+
+            <span>
+              Maximum term
+            </span>
+
+            <strong>
+              ${DUTY_PRICING.financing.maximumTermMonths}
+              months
+            </strong>
+
+          </div>
+
+          <div class="summary-row">
+
+            <span>
+              Remaining cash
+            </span>
+
+            <strong>
+              ${money(cashRemaining)}
+            </strong>
+
+          </div>
+
+          <div class="summary-row">
+
+            <span>
+              Cash per visit
+            </span>
+
+            <strong>
+              ${money(cashPerVisit)}
+            </strong>
+
+          </div>
+
+        </div>
+
+      `;
+
+    }
+
+
+    // =======================================
+    // INSTALLMENTS SELECTED BUT NOT ELIGIBLE
+    // =======================================
+
+    if(
+      paymentMethod === 'installments' &&
+      !installmentEligible
+    ){
+
+      html += `
+
+        <div class="rule-note">
+
+          Installment plans are available only
+          for patients from the United States
+          or Canada.
+
+        </div>
+
+      `;
+
+    }
+
+
+    // =======================================
+    // IMPLANT NOTE
+    // =======================================
+
+    if(result.hasImplants){
+
+      html += `
+
+        <div class="rule-note">
+
+          Implant case: default is 2 visits.
+          A 1-visit plan requires explicit
+          coordinator confirmation.
+
+        </div>
+
+      `;
+
+    }
+
+
+    // =======================================
+    // CLOSE OPTION
+    // =======================================
+
+    html += `
+
+      </div>
+
+    `;
+
   });
 
-  // =========================================
-  // PATIENT TOTAL
-  // =========================================
-
-  html += `
-    <div class="summary-row grand-total">
-      <span>
-        Patient quotation total
-      </span>
-
-      <strong>
-        ${money(markedTotal)}
-      </strong>
-    </div>
-  `;
-
-  // =========================================
-  // IMPLANT RULE
-  // =========================================
-
-  if(implantCase){
-
-    html += `
-      <div class="rule-note">
-        Implant case: default is 2 visits.
-        A 1-visit plan requires explicit coordinator confirmation.
-      </div>
-    `;
-  }
-
-  // =========================================
-  // INSTALLMENT MODE
-  // =========================================
-
-  if(eligible){
-
-    const financedPackage =
-      markedTotal * 1.20;
-
-    const installment =
-      Math.min(
-        DUTY_PRICING.financing.installmentAmount,
-        financedPackage
-      );
-
-    const cashRemaining =
-      Math.max(
-        0,
-        financedPackage - installment
-      );
-
-    const visits =
-      optionSummaries.length
-        ? Math.max(
-            ...optionSummaries.map(
-              item => item.visits
-            )
-          )
-        : 2;
-
-    const cashPerVisit =
-      visits > 1
-        ? cashRemaining / visits
-        : cashRemaining;
-
-    html += `
-      <div class="financing-box">
-
-        <strong>
-          US / Canada installment logic
-        </strong>
-
-        <br>
-
-        Package + 20%:
-        ${money(financedPackage)}
-
-        <br>
-
-        Installments:
-        ${money(installment)}
-        (up to ${DUTY_PRICING.financing.maximumTermMonths} months)
-
-        <br>
-
-        Remaining cash:
-        ${money(cashRemaining)}
-
-        ${
-          visits > 1
-            ? ` / ${visits} visits =
-               ${money(cashPerVisit)} each visit`
-            : ` — payable at the single visit`
-        }
-
-      </div>
-    `;
-  }
 
   // =========================================
   // DISPLAY
   // =========================================
 
-  $('summaryLines').innerHTML = html;
+  $('summaryLines').innerHTML =
+    html;
 }
+
 function numberValue(value){
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : 0;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
 }
 
 function money(value){

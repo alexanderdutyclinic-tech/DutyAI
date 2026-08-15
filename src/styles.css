@@ -1,1 +1,218 @@
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#17212b}.app-shell{max-width:900px;margin:40px auto;padding:0 20px}.app-header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:24px}.brand{font-weight:700;font-size:22px}h1{margin:8px 0 6px;font-size:32px}h2{margin-top:0}p{color:#5d6873}.card{background:#fff;border:1px solid #e1e6ea;border-radius:14px;padding:28px;box-shadow:0 4px 16px rgba(0,0,0,.05)}.hidden{display:none}label{display:block;font-weight:600;margin:18px 0 8px}input,select,textarea{width:100%;padding:12px;border:1px solid #cfd6dc;border-radius:8px;font:inherit}textarea{resize:vertical}.primary,.secondary{border:0;border-radius:8px;padding:12px 18px;font-weight:700;cursor:pointer}.primary{background:#17212b;color:white}.primary:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#e9edf0;color:#17212b}.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.check-row{display:flex;gap:10px;align-items:flex-start;font-weight:400}.check-row input{width:auto;margin-top:3px}.data-box{background:#f7f9fa;border:1px solid #e1e6ea;border-radius:10px;padding:16px;white-space:pre-wrap}footer{text-align:center;color:#7b858e;font-size:12px;margin:18px}
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    color: #17212b
+}
+
+.app-shell {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px
+}
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 24px
+}
+
+.brand {
+    font-weight: 700;
+    font-size: 22px
+}
+
+h1 {
+    margin: 8px 0 6px;
+    font-size: 32px
+}
+
+h2 {
+    margin-top: 0
+}
+
+p {
+    color: #5d6873
+}
+
+.card {
+    background: #fff;
+    border: 1px solid #e1e6ea;
+    border-radius: 14px;
+    padding: 28px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .05)
+}
+
+.hidden {
+    display: none
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin: 18px 0 8px
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #cfd6dc;
+    border-radius: 8px;
+    font: inherit
+}
+
+textarea {
+    resize: vertical
+}
+
+.primary,
+.secondary {
+    border: 0;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-weight: 700;
+    cursor: pointer
+}
+
+.primary {
+    background: #17212b;
+    color: white
+}
+
+.primary:disabled {
+    opacity: .45;
+    cursor: not-allowed
+}
+
+.secondary {
+    background: #e9edf0;
+    color: #17212b
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px
+}
+
+.check-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-weight: 400
+}
+
+.check-row input {
+    width: auto;
+    margin-top: 3px
+}
+
+.data-box {
+    background: #f7f9fa;
+    border: 1px solid #e1e6ea;
+    border-radius: 10px;
+    padding: 16px;
+    white-space: pre-wrap
+}
+
+footer {
+    text-align: center;
+    color: #7b858e;
+    font-size: 12px;
+    margin: 18px
+}
+
+/* =========================================
+   QUOTATION OPTION SEPARATION
+   ========================================= */
+
+.quotation-summary-option {
+  border: 1px solid #d9dee7;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 18px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.quotation-summary-option > h3 {
+  margin-top: 0;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e8ebf0;
+}
+
+.quotation-summary-option .payment-breakdown,
+.quotation-summary-option .financing-box {
+  margin-top: 14px;
+}
+
+.quotation-summary-option .rule-note {
+  margin-top: 12px;
+}
+
+/* Clearly separate quotation options */
+
+#quotationOptions .quotation-option {
+  border: 2px solid #d9dee7;
+  border-radius: 14px;
+  padding: 20px;
+  margin: 20px 0;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+#quotationOptions .quotation-option .option-header {
+  margin: -20px -20px 20px -20px;
+  padding: 14px 20px;
+  background: #f4f6f8;
+  border-bottom: 1px solid #d9dee7;
+  border-radius: 12px 12px 0 0;
+}
+
+#quotationOptions .quotation-option .option-header h3 {
+  margin: 0;
+}
+/* Option card colors */
+
+#quotationOptions .quotation-option:nth-child(1) {
+  border-left: 5px solid #2563eb;
+}
+
+#quotationOptions .quotation-option:nth-child(2) {
+  border-left: 5px solid #16a34a;
+}
+
+#quotationOptions .quotation-option:nth-child(3) {
+  border-left: 5px solid #d97706;
+}
+
+#quotationOptions .quotation-option:nth-child(4) {
+  border-left: 5px solid #7c3aed;
+}
+
+
+#quotationOptions .quotation-option:nth-child(1) .option-header {
+  background: #eff6ff;
+}
+
+#quotationOptions .quotation-option:nth-child(2) .option-header {
+  background: #f0fdf4;
+}
+
+#quotationOptions .quotation-option:nth-child(3) .option-header {
+  background: #fffbeb;
+}
+
+#quotationOptions .quotation-option:nth-child(4) .option-header {
+  background: #f5f3ff;
+}
