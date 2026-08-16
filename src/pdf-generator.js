@@ -59,24 +59,75 @@ function pdfLabels(language) {
       intro: 'Le ofrecemos un plan de tratamiento personalizado basado en la información proporcionada. Las siguientes páginas resumen el tratamiento seleccionado, alojamiento, servicios y forma de pago.',
       installment: 'PLAN DE CUOTAS PARA EE. UU. / CANADÁ', package: 'Paquete +', installmentAmount: 'Importe financiado', remainingCash: 'Saldo restante', cashPerVisit: 'Pago en efectivo por visita', option: 'OPCIÓN', translationNotice: 'Plan de tratamiento traducido a partir de los datos confirmados por el médico.'
     },
-    Arabic: {
-      proposal: 'خطة علاج شخصية', preparedFor: 'مُعدّة لـ', date: 'التاريخ', treatmentPlan: 'خطة العلاج', treatment: 'العلاج', quantity: 'الكمية', unitPrice: 'سعر الوحدة', total: 'الإجمالي',
-      implants: 'زراعة الأسنان', crowns: 'التيجان', procedures: 'إجراءات إضافية', accommodation: 'الإقامة والخدمات', visit1: 'الزيارة الأولى', visit2: 'الزيارة الثانية', hotel: 'الفندق', room: 'الغرفة', nights: 'الليالي', perNight: 'السعر / الليلة', services: 'الخدمات', details: 'التفاصيل', included: 'مشمول',
-      transfer: 'النقل VIP', prosthesis: 'تركيبة الأسنان', translator: 'مترجم', paymentByVisit: 'الدفع حسب الزيارة', optionTotal: 'إجمالي الخيار', visit: 'الزيارة', oneVisit: 'زيارة واحدة', twoVisits: 'زيارتان', important: 'مهم',
-      generated: 'تم إنشاء هذا المستند تلقائياً بناءً على خيار العلاج المحدد.', disclaimer: 'يتم تأكيد خطة العلاج النهائية ونطاق الإجراءات من قبل الطبيب بعد الفحص السريري والفحوصات التشخيصية اللازمة.',
-      intro: 'نقدم لكم خطة علاج شخصية بناءً على المعلومات المقدمة. تلخص الصفحات التالية العلاج المختار والإقامة والخدمات وخطة الدفع.',
-      installment: 'خطة التقسيط للولايات المتحدة / كندا', package: 'الباقة +', installmentAmount: 'مبلغ التقسيط', remainingCash: 'المبلغ المتبقي', cashPerVisit: 'الدفع النقدي لكل زيارة', option: 'الخيار', translationNotice: 'تمت ترجمة خطة العلاج بناءً على بيانات الطبيب المؤكدة.'
-    }
   };
   return dictionaries[language] || dictionaries.English;
 }
+function pdfOptionName(name, language) {
+  const value = String(name || '').trim().toLowerCase();
 
+  const maps = {
+    Russian: {
+      'German': 'Немецкая система',
+      'Swiss': 'Швейцарская система',
+      'American': 'Американская система',
+      'Korean': 'Корейская система',
+      'Turkish': 'Турецкая система'
+    },
+
+    French: {
+      'German': 'Système allemand',
+      'Swiss': 'Système suisse',
+      'American': 'Système américain',
+      'Korean': 'Système coréen',
+      'Turkish': 'Système turc'
+    },
+
+    Spanish: {
+      'German': 'Sistema alemán',
+      'Swiss': 'Sistema suizo',
+      'American': 'Sistema americano',
+      'Korean': 'Sistema coreano',
+      'Turkish': 'Sistema turco'
+    }
+  };
+
+  return maps[language]?.[value] || value;
+}
 function pdfServiceLabel(name, labels) {
   const key = String(name || '').toLowerCase();
   if (key.includes('vip')) return labels.transfer;
   if (key.includes('prosthesis')) return labels.prosthesis;
   if (key.includes('translator')) return labels.translator;
   return name || labels.services;
+}
+function pdfProductLabel(name, language) {
+  const key = String(name || '').trim().toLowerCase();
+
+  const maps = {
+    Russian: {
+      'Zirconium Crowns Ivoclar German': 'Циркониевые коронки Ivoclar (немецкие)',
+      'Zirconium Crowns Emax': 'Циркониевые коронки Emax',
+      'Zirconium Crowns Monolithic': 'Монолитные циркониевые коронки',
+      'Zirconium Crowns Multilayer': 'Многослойные циркониевые коронки',
+      'Straumann Zirconia': 'Циркониевые коронки Straumann'
+    },
+    French: {
+      'Zirconium Crowns Ivoclar German': 'Couronnes en zircone Ivoclar (allemandes)',
+      'Zirconium Crowns Emax': 'Couronnes en zircone Emax',
+      'Zirconium Crowns Monolithic': 'Couronnes en zircone monolithique',
+      'Zirconium Crowns Multilayer': 'Couronnes en zircone multicouche',
+      'Straumann Zirconia': 'Couronnes en zircone Straumann'
+    },
+    Spanish: {
+      'Zirconium Crowns Ivoclar German': 'Coronas de zirconio Ivoclar (alemanas)',
+      'Zirconium Crowns Emax': 'Coronas de zirconio Emax',
+      'Zirconium Crowns Monolithic': 'Coronas de zirconio monolítico',
+      'Zirconium Crowns Multilayer': 'Coronas de zirconio multicapa',
+      'Straumann Zirconia': 'Coronas de zirconio Straumann'
+    }
+  };
+
+  return maps[language]?.[key] || key;
 }
 
 function pdfProcedureLabel(name, language) {
@@ -85,7 +136,7 @@ function pdfProcedureLabel(name, language) {
     Russian: { 'bone grafting': 'Костная пластика' },
     French: { 'bone grafting': 'Greffe osseuse' },
     Spanish: { 'bone grafting': 'Injerto óseo' },
-    Arabic: { 'bone grafting': 'تطعيم العظم' },
+    
     English: { 'bone grafting': 'Bone grafting' }
   };
   return maps[language]?.[key] || name;
@@ -100,7 +151,12 @@ function pdfTranslateTreatmentPlan(quotation, language) {
   const lowerMax = d.lowerImplantsMax;
   const crowns = d.crowns;
   const material = d.crownMaterial;
-  const crownWord = { Russian: 'циркониевые коронки', French: 'couronnes en zircone', Spanish: 'coronas de zirconio', Arabic: 'تيجان الزركونيا', English: 'zirconia crowns' }[language] || 'zirconia crowns';
+  const crownWord = {
+  Russian: 'циркониевые коронки',
+  French: 'couronnes en zircone',
+  Spanish: 'coronas de zirconio',
+  English: 'zirconia crowns'
+}[language] || 'zirconia crowns';
   const lines = [];
 
   if (language === 'Russian') {
@@ -115,30 +171,7 @@ function pdfTranslateTreatmentPlan(quotation, language) {
     if (upper) lines.push(`• ${upper} implante${upper > 1 ? 's' : ''} para el maxilar superior.`);
     if (lowerMin) lines.push(`• ${lowerMin}${lowerMax && lowerMax !== lowerMin ? `–${lowerMax}` : ''} implante${lowerMax && lowerMax !== lowerMin ? 's' : ''} para la mandíbula, en el sector anterior, según el examen clínico.`);
     if (crowns) lines.push(`• ${crowns} ${crownWord}.`);
- } else if (language === 'Arabic') {
-  if (upper) {
-    lines.push(
-      `• ${upper} زرعة في الفك العلوي.`
-    );
-  }
-
-  if (lowerMin) {
-    const lowerRange =
-      lowerMax && lowerMax !== lowerMin
-        ? `${lowerMin}–${lowerMax}`
-        : `${lowerMin}`;
-
-    lines.push(
-  `• ${lowerRange} زرعة في الفك السفلي في المنطقة الأمامية، وفقاً للفحص السريري.`
-);
-  }
-
-  if (crowns) {
-    lines.push(
-      `• ${crowns} ${crownWord}.`
-    );
-  }
-}
+ }
 
   return lines.join('\n') || quotation.patient?.diagnosis || '';
 }
@@ -163,8 +196,8 @@ function pdfTreatmentRows(option, labels, language) {
   const rows = [];
   const implants = option.treatment?.implants;
   const crowns = option.treatment?.crowns;
-  if (implants?.quantity > 0) rows.push(`<tr><td>${pdfEsc(labels.implants)} — ${pdfEsc(implants.name || '')}</td><td>${implants.quantity}</td><td>${pdfMoneyHtml(implants.finalUnitPrice)}</td><td>${pdfMoneyHtml(implants.total)}</td></tr>`);
-  if (crowns?.quantity > 0) rows.push(`<tr><td>${pdfEsc(labels.crowns)} — ${pdfEsc(crowns.name || '')}</td><td>${crowns.quantity}</td><td>${pdfMoneyHtml(crowns.finalUnitPrice)}</td><td>${pdfMoneyHtml(crowns.total)}</td></tr>`);
+  if (implants?.quantity > 0) rows.push(`<tr><td>${pdfEsc(labels.implants)} — ${pdfEsc(pdfProductLabel(implants.name || '', language))}</td><td>${implants.quantity}</td><td>${pdfMoneyHtml(implants.finalUnitPrice)}</td><td>${pdfMoneyHtml(implants.total)}</td></tr>`);
+  if (crowns?.quantity > 0) rows.push(`<tr><td>${pdfEsc(labels.crowns)} — ${pdfEsc(pdfProductLabel(crowns.name || '', language))}</td><td>${crowns.quantity}</td><td>${pdfMoneyHtml(crowns.finalUnitPrice)}</td><td>${pdfMoneyHtml(crowns.total)}</td></tr>`);
   for (const p of (option.treatment?.procedures || [])) {
     const unit = p.unit ? ` / ${pdfEsc(p.unit)}` : '';
     rows.push(`<tr><td>${pdfEsc(pdfProcedureLabel(p.name, language))}</td><td>${p.quantity}${unit}</td><td>${pdfMoneyHtml(p.unitPrice)}</td><td>${pdfMoneyHtml(p.total)}</td></tr>`);
@@ -203,12 +236,12 @@ function pdfInstallmentBlock(quotation, option, labels) {
 
 function pdfOption(option, quotation, labels, index, language) {
   const v1 = option.visits?.visit1, v2 = option.visits?.visit2, visitCount = option.visits?.count || 1;
-  const rtlTableClass = language === 'Arabic' ? ' rtl-table' : '';
-  return `<section class="option-block"><div class="option-title-row"><div><div class="option-number">${pdfEsc(labels.option)} ${index + 1}</div><h2>${pdfEsc(option.name)}</h2></div><div class="option-total"><span>${pdfEsc(labels.optionTotal)}</span><strong>${pdfMoneyHtml(option.totals.total)}</strong></div></div>
-  <div class="section-kicker">${pdfEsc(labels.treatmentPlan)}</div><table class="proposal-table${rtlTableClass}"><thead><tr><th>${pdfEsc(labels.treatment)}</th><th>${pdfEsc(labels.quantity)}</th><th>${pdfEsc(labels.unitPrice)}</th><th>${pdfEsc(labels.total)}</th></tr></thead><tbody>${pdfTreatmentRows(option, labels, language)}</tbody></table>
+  
+  return `<section class="option-block"><div class="option-title-row"><div><div class="option-number">${pdfEsc(labels.option)} ${index + 1}</div><h2>${pdfEsc(pdfOptionName(option.name, language))}</h2></div><div class="option-total"><span>${pdfEsc(labels.optionTotal)}</span><strong>${pdfMoneyHtml(option.totals.total)}</strong></div></div>
+  <div class="section-kicker">${pdfEsc(labels.treatmentPlan)}</div><table class="proposal-table"><thead><tr><th>${pdfEsc(labels.treatment)}</th><th>${pdfEsc(labels.quantity)}</th><th>${pdfEsc(labels.unitPrice)}</th><th>${pdfEsc(labels.total)}</th></tr></thead><tbody>${pdfTreatmentRows(option, labels, language)}</tbody></table>
   <div class="section-kicker">${pdfEsc(labels.accommodation)} — ${visitCount === 1 ? pdfEsc(labels.oneVisit) : pdfEsc(labels.twoVisits)}</div>
-  ${v1 ? `<div class="visit-heading">${pdfEsc(labels.visit1)}</div><table class="proposal-table services-table${rtlTableClass}"><thead><tr><th>${pdfEsc(labels.services)}</th><th>${pdfEsc(labels.details)}</th><th>${pdfEsc(labels.nights)}</th><th>${pdfEsc(labels.perNight)}</th><th>${pdfEsc(labels.total)}</th></tr></thead><tbody>${pdfHotelRows(v1, labels)}</tbody></table>` : ''}
-  ${v2 ? `<div class="visit-heading">${pdfEsc(labels.visit2)}</div><table class="proposal-table services-table${rtlTableClass}"><thead><tr><th>${pdfEsc(labels.services)}</th><th>${pdfEsc(labels.details)}</th><th>${pdfEsc(labels.nights)}</th><th>${pdfEsc(labels.perNight)}</th><th>${pdfEsc(labels.total)}</th></tr></thead><tbody>${pdfHotelRows(v2, labels)}</tbody></table>` : ''}
+  ${v1 ? `<div class="visit-heading">${pdfEsc(labels.visit1)}</div><table class="proposal-table services-table"><thead><tr><th>${pdfEsc(labels.services)}</th><th>${pdfEsc(labels.details)}</th><th>${pdfEsc(labels.nights)}</th><th>${pdfEsc(labels.perNight)}</th><th>${pdfEsc(labels.total)}</th></tr></thead><tbody>${pdfHotelRows(v1, labels)}</tbody></table>` : ''}
+  ${v2 ? `<div class="visit-heading">${pdfEsc(labels.visit2)}</div><table class="proposal-table services-table"><thead><tr><th>${pdfEsc(labels.services)}</th><th>${pdfEsc(labels.details)}</th><th>${pdfEsc(labels.nights)}</th><th>${pdfEsc(labels.perNight)}</th><th>${pdfEsc(labels.total)}</th></tr></thead><tbody>${pdfHotelRows(v2, labels)}</tbody></table>` : ''}
   <div class="payment-section"><div class="section-kicker">${pdfEsc(labels.paymentByVisit)}</div>${pdfVisitSummary(option, labels)}<div class="grand-total"><span>${pdfEsc(labels.total)}</span><strong>${pdfMoneyHtml(option.totals.total)}</strong></div></div>
   ${pdfInstallmentBlock(quotation, option, labels)}</section>`;
 }
@@ -223,7 +256,7 @@ function generateQuotationPdf() {
   const translatedPlan = pdfTranslateTreatmentPlan(quotation, language);
   const optionsHtml = quotation.options.length ? quotation.options.map((o, i) => pdfOption(o, quotation, labels, i, language)).join('') : '<p>No quotation options were added.</p>';
 
-  const html = `<!doctype html><html lang="${language === 'Russian' ? 'ru' : language === 'Arabic' ? 'ar' : language === 'French' ? 'fr' : language === 'Spanish' ? 'es' : 'en'}"><head><meta charset="utf-8"><title>Duty Clinic — ${pdfEsc(patientName)}</title><style>
+  const html = `<!doctype html><html lang="${language === 'Russian' ? 'ru' : language === 'French' ? 'fr' : language === 'Spanish' ? 'es' : 'en'}">
   @page{size:A4;margin:10mm 12mm 12mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#18202b;background:#fff;font-size:10pt;line-height:1.34}.page{max-width:190mm;margin:0 auto}.brand-bar{border-bottom:4px solid #e43b3b;padding:0 0 9px;margin-bottom:12px}.brand{font-size:26pt;font-weight:800;letter-spacing:-1px;color:#15283f}.brand-meta{margin-top:3px;font-size:8pt;color:#56616d}.brand-meta strong{color:#15283f}.title{margin:10px 0 4px;color:#15283f;font-size:18pt;letter-spacing:.2px}.subtitle{color:#596572;font-size:9pt}.patient-card{margin:12px 0 13px;padding:11px 14px;background:#f4f7fa;border-left:5px solid #1f5eff;border-radius:5px}.patient-name{font-size:15pt;font-weight:700;color:#15283f}.patient-meta{margin-top:3px;color:#596572}.intro{margin:11px 0 12px}.diagnosis{
   padding:9px 11px;
   background:#fafafa;
@@ -231,32 +264,15 @@ function generateQuotationPdf() {
   border-radius:5px;
   white-space:pre-wrap;
   font-size:9pt;
-}.diagnosis[dir="rtl"]{
-  direction:rtl;
-  unicode-bidi:plaintext;
-  text-align:right;
 }.translation-note{margin-top:5px;color:#7b8792;font-size:7.5pt}.option-block{margin:14px 0 16px;padding:0 0 13px;border-bottom:1px solid #d9dfe5;break-inside:auto;page-break-inside:auto}.option-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:9px}.option-number{color:#e43b3b;font-size:8pt;font-weight:800;letter-spacing:1.3px}h2{margin:2px 0 0;color:#15283f;font-size:16pt}.option-total{min-width:39mm;padding:8px 10px;background:#15283f;color:#fff;border-radius:6px;text-align:right}.option-total span{display:block;font-size:7pt;opacity:.8}.option-total strong{display:block;margin-top:1px;font-size:15pt}.section-kicker{margin:10px 0 5px;color:#15283f;font-size:8pt;font-weight:800;letter-spacing:1px}.proposal-table{width:100%;border-collapse:collapse;margin-bottom:7px;break-inside:auto}.proposal-table th{background:#eef3f8;color:#15283f;text-align:left;font-size:7.5pt;padding:5px 7px;border-bottom:1px solid #ccd5de}.proposal-table td{padding:5px 7px;border-bottom:1px solid #e3e7eb;vertical-align:top;font-size:8.5pt}.proposal-table th:not(:first-child),.proposal-table td:not(:first-child){text-align:right;white-space:nowrap}.services-table th:first-child,.services-table td:first-child{width:24%}.services-table th:nth-child(2),.services-table td:nth-child(2){width:30%}.visit-heading{margin:8px 0 3px;font-size:9pt;font-weight:800;color:#1f5eff}.payment-section{margin-top:10px}.visit-summary{display:inline-block;vertical-align:top;width:48.5%;margin:0 1% 6px 0;padding:8px 10px;border:1px solid #dce2e8;border-radius:5px;break-inside:avoid}.visit-summary:nth-child(2n){margin-right:0}.visit-summary-title{color:#15283f;font-weight:800;font-size:8.5pt;margin-bottom:3px}.visit-line,.visit-total{display:flex;justify-content:space-between;gap:10px}.visit-line{color:#596572;font-size:8pt;margin-top:1px}.visit-total{margin-top:4px;padding-top:4px;border-top:1px solid #e0e5ea;font-weight:800;color:#15283f}.grand-total{margin-top:6px;padding:9px 12px;background:#f4f7fa;display:flex;justify-content:space-between;align-items:center;border-radius:5px}.grand-total span{font-weight:700;color:#15283f}.grand-total strong{font-size:15pt;color:#e43b3b}.installment-box{margin-top:9px;padding:9px 11px;border:1px solid #ccd8e6;border-left:5px solid #1f5eff;border-radius:5px;background:#f7faff;break-inside:avoid}.installment-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.installment-grid div{padding:6px;background:#fff;border:1px solid #e1e7ee;border-radius:4px}.installment-grid span{display:block;font-size:7pt;color:#66727e}.installment-grid strong{display:block;margin-top:2px;color:#15283f;font-size:8.5pt}.closing{margin-top:10px;break-inside:avoid;page-break-inside:avoid}.important{padding:9px 11px;background:#fff8f8;border-left:5px solid #e43b3b;border-radius:4px}.important-title{color:#e43b3b;font-weight:800;letter-spacing:.7px;margin-bottom:3px}.footer{margin-top:10px;padding-top:7px;border-top:2px solid #15283f;color:#596572;font-size:7pt}.footer strong{color:#15283f}.print-note{margin:8px 0;padding:7px 9px;background:#fffbe8;border:1px solid #eadb91;font-size:8pt}/* your existing CSS */
 
-.rtl-table{
-  direction:rtl;
-}
 
-.rtl-table th,
-.rtl-table td{
-  direction:rtl;
-  text-align:right;
-}
-
-.rtl-table th:not(:first-child),
-.rtl-table td:not(:first-child){
-  text-align:left;
-}
  @media print{.print-note{display:none}a{color:inherit;text-decoration:none}.page{max-width:none}body{font-size:9.5pt}}
 </style></head><body><div class="page"><div class="print-note">${language === 'Russian' ? 'В окне печати выберите «Сохранить как PDF».' : 'In the print dialog, choose “Save as PDF”.'}</div>
 <header class="brand-bar"><div class="brand">Duty Clinic</div><div class="brand-meta"><strong>Istanbul • Türkiye</strong> | Professional Dental Care with International Standards.</div><div class="brand-meta">Duty Clinic Istanbul | +90 536 779 07 91 | dutyclinic.com | info@dutyclinic.com</div></header>
 <h1 class="title">${pdfEsc(labels.proposal)}</h1><div class="subtitle">${pdfEsc(labels.date)}: ${pdfEsc(generatedDate)}</div>
 <div class="patient-card"><div class="patient-name">${pdfEsc(patientName)}</div>
-<div class="patient-meta"><div class="patient-meta" ${language === 'Arabic' ? 'dir="rtl" lang="ar"' : ''}>
+<div class="patient-meta"><div class="patient-meta">
   <span>${pdfEsc(labels.preparedFor)}</span>
   <bdi dir="ltr">${pdfEsc(patientName)}</bdi>
   <span> · </span>
@@ -266,24 +282,22 @@ function generateQuotationPdf() {
       ? (language === 'Russian' ? 'вариант'
         : language === 'French' ? 'option'
         : language === 'Spanish' ? 'opción'
-        : language === 'Arabic' ? 'خيار'
         : 'option')
       : (language === 'Russian' ? 'варианта'
         : language === 'French' ? 'options'
         : language === 'Spanish' ? 'opciones'
-        : language === 'Arabic' ? 'خيارات'
         : 'options')}
   </span>
 </div>
 <div class="intro">${pdfEsc(labels.intro)}</div>
 ${translatedPlan ? `
   <div class="section-kicker">${pdfEsc(labels.treatmentPlan)}</div>
-  <div class="diagnosis" ${language === 'Arabic' ? 'dir="rtl" lang="ar"' : ''}>
-    ${pdfEsc(translatedPlan)}
-  </div>
-  <div class="translation-note" ${language === 'Arabic' ? 'dir="rtl" lang="ar"' : ''}>
-    ${pdfEsc(labels.translationNotice)}
-  </div>
+  <div class="diagnosis">
+  ${pdfEsc(translatedPlan)}
+</div>
+<div class="translation-note">
+  ${pdfEsc(labels.translationNotice)}
+</div>
 ` : ''}
 ${optionsHtml}
 <section class="closing"><div class="important"><div class="important-title">${pdfEsc(labels.important)}</div><div>${pdfEsc(labels.disclaimer)}</div></div></section>

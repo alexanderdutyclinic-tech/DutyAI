@@ -12,20 +12,108 @@ const PRICING = {
     { id: 'veneers', name: 'Veneers', price: 150 }
   ],
   implants: [
-    { id: 'medigma', name: 'German Implants Medigma', displayName: 'Medigma', price: 300 },
-    { id: 'bego', name: 'German Implants Bego', displayName: 'BEGO', price: 370 },
-    { id: 'hiossen', name: 'American Implants Hiossen', displayName: 'Hiossen', price: 500 },
-    { id: 'zimmer', name: 'American Implants Zimmer', displayName: 'Zimmer', price: 650 },
-    { id: 'neodent', name: 'Neodent by Straumann', price: 500 },
-    { id: 'medentika', name: 'Medentika by Straumann', displayName: 'Medentika by Straumann Group', price: 650 },
-    { id: 'nobel-biocare', name: 'Nobel Biocare', price: 600 },
-    { id: 'megagen', name: 'Korean Implants Megagen', displayName: 'Megagen', price: 500 },
-    { id: 'osstem', name: 'Korean Implants Osstem', displayName: 'Osstem', price: 500 },
-    { id: 'straumann', name: 'Swiss Implants Straumann', displayName: 'Straumann', price: 600 },
-    { id: 'straumann-blt', name: 'Swiss Implants Straumann BLT', displayName: 'Straumann BLT', price: 600 },
-    { id: 'straumann-blx', name: 'Swiss Implants Straumann BLX', displayName: 'Straumann BLX', price: 750 },
-    { id: 'venus', name: 'Turkish Implants Venus', displayName: 'Venus', price: 225 }
-  ],
+  { 
+    id: 'medigma',
+    name: 'German Implants Medigma',
+    displayName: 'Medigma',
+    origin: 'German',
+    price: 300
+  },
+
+  { 
+    id: 'bego',
+    name: 'German Implants Bego',
+    displayName: 'BEGO',
+    origin: 'German',
+    price: 370
+  },
+
+  { 
+    id: 'hiossen',
+    name: 'American Implants Hiossen',
+    displayName: 'Hiossen',
+    origin: 'American',
+    price: 500
+  },
+
+  { 
+    id: 'zimmer',
+    name: 'American Implants Zimmer',
+    displayName: 'Zimmer',
+    origin: 'American',
+    price: 650
+  },
+
+  {
+    id: 'neodent',
+    name: 'Neodent by Straumann',
+    origin: 'Swiss',
+    price: 500
+  },
+
+  {
+    id: 'medentika',
+    name: 'Medentika by Straumann',
+    displayName: 'Medentika by Straumann Group',
+    origin: 'Swiss',
+    price: 650
+  },
+
+  {
+    id: 'nobel-biocare',
+    name: 'Nobel Biocare',
+    origin: 'Other',
+    price: 600
+  },
+
+  {
+    id: 'megagen',
+    name: 'Korean Implants Megagen',
+    displayName: 'Megagen',
+    origin: 'Korean',
+    price: 500
+  },
+
+  {
+    id: 'osstem',
+    name: 'Korean Implants Osstem',
+    displayName: 'Osstem',
+    origin: 'Korean',
+    price: 500
+  },
+
+  {
+    id: 'straumann',
+    name: 'Swiss Implants Straumann',
+    displayName: 'Straumann',
+    origin: 'Swiss',
+    price: 600
+  },
+
+  {
+    id: 'straumann-blt',
+    name: 'Swiss Implants Straumann BLT',
+    displayName: 'Straumann BLT',
+    origin: 'Swiss',
+    price: 600
+  },
+
+  {
+    id: 'straumann-blx',
+    name: 'Swiss Implants Straumann BLX',
+    displayName: 'Straumann BLX',
+    origin: 'Swiss',
+    price: 750
+  },
+
+  {
+    id: 'venus',
+    name: 'Turkish Implants Venus',
+    displayName: 'Venus',
+    origin: 'Turkish',
+    price: 225
+  }
+],
   procedures: [
     { id: 'bone-graft', name: 'Bone Grafting', price: 400, unit: '1 cc' },
     { id: 'sinus-1', name: 'Sinus Lifting with Bone Graft (1 Side)', price: 740, unit: 'one side' },
