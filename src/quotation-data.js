@@ -156,6 +156,7 @@ function buildQuotationData(){
     generatedAt: new Date().toISOString(),
     patient: {
       name: $('patientName')?.value?.trim() || '',
+      arabicName: $('patientNameArabic')?.value?.trim() || '',
       country,
       language: $('language')?.value || '',
       diagnosis: $('confirmedDiagnosis')?.value?.trim() || '',
