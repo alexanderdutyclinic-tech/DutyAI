@@ -1628,77 +1628,84 @@ function recalculateQuotation(){
     `;
 
 
+        // =======================================
+    // PAYMENT BY VISIT
+    // ALWAYS DISPLAYED
     // =======================================
-    // NORMAL PAYMENT — PAY BY VISITS
-    // =======================================
 
-    if(paymentMethod === 'visit-payments'){
+    if(result.visits === 1){
 
-      if(result.visits === 1){
+      html += `
 
-        html += `
+        <div class="payment-breakdown">
 
-          <div class="payment-breakdown">
+          <h4>Payment — 1 visit</h4>
 
-            <h4>Payment — 1 visit</h4>
+          <div class="summary-row">
 
-            <div class="summary-row">
+            <span>
+              Visit 1
+            </span>
 
-              <span>
-                Visit 1
-              </span>
-
-              <strong>
-                ${money(result.visit1Total)}
-              </strong>
-
-            </div>
+            <strong>
+              ${money(result.visit1Total)}
+            </strong>
 
           </div>
 
-        `;
+        </div>
 
-      } else {
+      `;
 
-        html += `
+    } else {
 
-          <div class="payment-breakdown">
+      html += `
 
-            <h4>Payment by visit</h4>
+        <div class="payment-breakdown">
 
-            <div class="summary-row">
+          <h4>Payment by visit</h4>
 
-              <span>
-                Visit 1
-              </span>
+          <div class="summary-row">
 
-              <strong>
-                ${money(result.visit1Total)}
-              </strong>
+            <span>
+              Visit 1
+            </span>
 
-            </div>
-
-            <div class="summary-row">
-
-              <span>
-                Visit 2
-              </span>
-
-              <strong>
-                ${money(result.visit2Total)}
-              </strong>
-
-            </div>
+            <strong>
+              ${money(result.visit1Total)}
+            </strong>
 
           </div>
 
-        `;
+          <div class="summary-row">
 
-      }
+            <span>
+              Visit 2
+            </span>
+
+            <strong>
+              ${money(result.visit2Total)}
+            </strong>
+
+          </div>
+
+          <div class="summary-row">
+
+            <span>
+              Visit 1 + Visit 2
+            </span>
+
+            <strong>
+              ${money(result.subtotal)}
+            </strong>
+
+          </div>
+
+        </div>
+
+      `;
 
     }
-
-
     // =======================================
     // US / CANADA INSTALLMENTS
     // =======================================
