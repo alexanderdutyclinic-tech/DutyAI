@@ -256,7 +256,7 @@ function generateQuotationPdf() {
   const translatedPlan = pdfTranslateTreatmentPlan(quotation, language);
   const optionsHtml = quotation.options.length ? quotation.options.map((o, i) => pdfOption(o, quotation, labels, i, language)).join('') : '<p>No quotation options were added.</p>';
 
-  const html = `<!doctype html><html lang="${language === 'Russian' ? 'ru' : language === 'French' ? 'fr' : language === 'Spanish' ? 'es' : 'en'}">
+  const html = `<!doctype html><html lang="${language === 'Russian' ? 'ru' : language === 'French' ? 'fr' : language === 'Spanish' ? 'es' : 'en'}"><head><meta charset="utf-8"><title>Duty Clinic — ${pdfEsc(patientName)}</title><style>
   @page{size:A4;margin:10mm 12mm 12mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#18202b;background:#fff;font-size:10pt;line-height:1.34}.page{max-width:190mm;margin:0 auto}.brand-bar{border-bottom:4px solid #e43b3b;padding:0 0 9px;margin-bottom:12px}.brand{font-size:26pt;font-weight:800;letter-spacing:-1px;color:#15283f}.brand-meta{margin-top:3px;font-size:8pt;color:#56616d}.brand-meta strong{color:#15283f}.title{margin:10px 0 4px;color:#15283f;font-size:18pt;letter-spacing:.2px}.subtitle{color:#596572;font-size:9pt}.patient-card{margin:12px 0 13px;padding:11px 14px;background:#f4f7fa;border-left:5px solid #1f5eff;border-radius:5px}.patient-name{font-size:15pt;font-weight:700;color:#15283f}.patient-meta{margin-top:3px;color:#596572}.intro{margin:11px 0 12px}.diagnosis{
   padding:9px 11px;
   background:#fafafa;

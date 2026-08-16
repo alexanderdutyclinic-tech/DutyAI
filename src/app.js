@@ -680,6 +680,27 @@ function bindOptionEvents(card){
 
 
   // =========================================
+  // OPTION NAME
+  // =========================================
+  // Auto-follows the selected implant brand (e.g. "German Implant System")
+  // until the coordinator types a custom name, at which point it stops
+  // auto-updating so their customization is never overwritten.
+
+  const nameInput =
+    card.querySelector('.option-name');
+
+  if(nameInput){
+
+    nameInput.dataset.autoName = 'true';
+
+    nameInput.addEventListener('input', () => {
+      nameInput.dataset.autoName = 'false';
+    });
+
+  }
+
+
+  // =========================================
   // VISIT PLAN
   // =========================================
 
@@ -765,6 +786,23 @@ function bindOptionEvents(card){
             DUTY_PRICING.implants,
             implantSelect.value
           );
+
+
+        if(
+          nameInput &&
+          nameInput.dataset.autoName === 'true'
+        ){
+
+          const index =
+            [...document.querySelectorAll('.quotation-option')]
+              .indexOf(card);
+
+          nameInput.value =
+            implant?.origin
+              ? `${implant.origin} Implant System`.toUpperCase()
+              : `Option ${index + 1}`;
+
+        }
 
 
         if(!implant){

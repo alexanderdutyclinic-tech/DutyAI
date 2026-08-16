@@ -2,18 +2,18 @@
 // This layer prepares the already-calculated quotation for future PDF generation.
 // It does not perform a second pricing calculation.
 
-function getQuotationHotelDetails(hotelId, roomType, nights){
-  if(!hotelId) return null;
+function getQuotationHotelDetails(hotelId, roomType, nights) {
+  if (!hotelId) return null;
 
   const hotel = DUTY_PRICING.hotels.find(item => item.id === hotelId);
-  if(!hotel) return null;
+  if (!hotel) return null;
 
   let nightlyPrice = null;
   let roomLabel = roomType;
 
-  if(hotel.roomOptions){
+  if (hotel.roomOptions) {
     const room = hotel.roomOptions.find(item => item.name.toLowerCase().includes(roomType.toLowerCase()));
-    if(room){
+    if (room) {
       nightlyPrice = Number(room.price);
       roomLabel = room.name;
     }
@@ -21,7 +21,7 @@ function getQuotationHotelDetails(hotelId, roomType, nights){
     nightlyPrice = Number(hotel[roomType]);
   }
 
-  if(!Number.isFinite(nightlyPrice) || nightlyPrice < 0) nightlyPrice = 0;
+  if (!Number.isFinite(nightlyPrice) || nightlyPrice < 0) nightlyPrice = 0;
 
   return {
     id: hotel.id,
@@ -35,11 +35,11 @@ function getQuotationHotelDetails(hotelId, roomType, nights){
   };
 }
 
-function getQuotationProcedureDetails(card){
+function getQuotationProcedureDetails(card) {
   return [...card.querySelectorAll('.procedure-choice:checked')]
     .map(choice => {
       const procedure = DUTY_PRICING.procedures.find(item => item.id === choice.value);
-      if(!procedure) return null;
+      if (!procedure) return null;
 
       const quantityInput = card.querySelector(
         `.procedure-quantity-input[data-procedure-id="${choice.value}"]`
@@ -60,8 +60,29 @@ function getQuotationProcedureDetails(card){
     })
     .filter(Boolean);
 }
+function getAutomaticOptionName(implant){
+  if(!implant?.origin) return null;
 
-function getQuotationOptionData(card, index){
+  return `${implant.origin} Implant System`.toUpperCase();
+}
+
+// A name is still "default" if the coordinator never edited it away from the
+// auto-filled "Option N" placeholder set when the option card was created.
+function isDefaultOptionName(name){
+  return /^Option \d+$/.test(name);
+}
+
+function getQuotationOptionName(card, implant, index){
+  const customName = card.querySelector('.option-name')?.value?.trim() || '';
+
+  if(customName && !isDefaultOptionName(customName)){
+    return customName;
+  }
+
+  return getAutomaticOptionName(implant) || customName || `Option ${index + 1}`;
+}
+
+function getQuotationOptionData(card, index) {
   const result = calculateOption(card);
 
   const implant = getSelected(DUTY_PRICING.implants, card.querySelector('.implant-brand')?.value);
@@ -86,18 +107,18 @@ function getQuotationOptionData(card, index){
   const prosthesisPrice = numberValue(card.querySelector('.prosthesis-option')?.value);
 
   return {
-    id: card.dataset.optionId || `option-${index + 1}`,
-    name: card.querySelector('.option-name')?.value?.trim() || `Option ${index + 1}`,
-    treatment: {
-      implants: {
-        id: implant?.id || null,
-        name: implant?.displayName || implant?.name || null,
-        quantity: result.totalImplants,
-        baseUnitPrice: implant?.price || 0,
-        markupPercent: implantMarkup,
-        finalUnitPrice: result.implantUnitPrice,
-        total: result.totalImplants * result.implantUnitPrice
-      },
+  id: card.dataset.optionId || `option-${index + 1}`,
+  name: getQuotationOptionName(card, implant, index),
+    treatment: { 
+  implants: { 
+    id: implant?.id || null, 
+    name: implant?.displayName || implant?.name || null,
+    quantity: result.totalImplants, 
+    baseUnitPrice: implant?.price || 0, 
+    markupPercent: implantMarkup, 
+    finalUnitPrice: result.implantUnitPrice, 
+    total: result.totalImplants * result.implantUnitPrice 
+  },
       crowns: {
         id: crown?.id || null,
         name: crown?.displayName || crown?.name || null,
@@ -145,7 +166,7 @@ function getQuotationOptionData(card, index){
   };
 }
 
-function buildQuotationData(){
+function buildQuotationData() {
   const country = $('patientCountry')?.value || 'Other';
   const paymentMethod = $('paymentMethod')?.value || 'visit-payments';
   const installmentEligible = paymentMethod === 'installments' && DUTY_PRICING.financing.eligibleCountries.includes(country);
@@ -175,4 +196,4 @@ function buildQuotationData(){
   };
 }
 
-if(typeof window !== 'undefined') window.buildQuotationData = buildQuotationData;
+if (typeof window !== 'undefined') window.buildQuotationData = buildQuotationData;
