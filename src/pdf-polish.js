@@ -33,7 +33,12 @@
         let refined = html;
 
         const optionPhrase = optionsLabel(language,count);
-        refined = refined.replace(/·\s*\d+\s+options?/i, `· ${optionPhrase}`);
+        refined = refined.replace(/·\s*\d+\s+(?:options?|varianta|вариант(?:а|ов)?|opción(?:es)?|خيار(?:ات)?)/i, `· ${optionPhrase}`);
+
+        // The payment section is the single authoritative place for the option total.
+        // Remove the duplicate option-total card from the option header so it can never
+        // be orphaned at the bottom of the preceding page.
+        refined = refined.replace(/<div class="option-total">[\s\S]*?<\/div>\s*<\/div>/g, '</div>');
 
         if(shouldSplitPayment){
           refined = refined.replace('</style>', `
