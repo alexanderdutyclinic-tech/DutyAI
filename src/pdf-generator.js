@@ -210,7 +210,7 @@ function generateQuotationPdf(){
 </style></head><body><div class="page"><div class="print-note">${language==='Russian'?'В окне печати выберите «Сохранить как PDF».':'In the print dialog, choose “Save as PDF”.'}</div>
 <header class="brand-bar"><div class="brand">Duty Clinic</div><div class="brand-meta"><strong>Istanbul • Türkiye</strong> | Professional Dental Care with International Standards.</div><div class="brand-meta">Duty Clinic Istanbul | +90 536 779 07 91 | dutyclinic.com | info@dutyclinic.com</div></header>
 <h1 class="title">${pdfEsc(labels.proposal)}</h1><div class="subtitle">${pdfEsc(labels.date)}: ${pdfEsc(generatedDate)}</div>
-<div class="patient-card"><div class="patient-name">${pdfEsc(patientName)}</div><div class="patient-meta">${pdfEsc(labels.preparedFor)} ${pdfEsc(patientName)} · ${quotation.options.length} ${quotation.options.length===1?'option':'options'}</div></div>
+<div class="patient-card"><div class="patient-name">${pdfEsc(patientName)}</div><div class="patient-meta">${pdfEsc(labels.preparedFor)} ${pdfEsc(patientName)} · ${quotation.options.length} ${quotation.options.length===1? (language==='Russian'?'вариант':language==='French'?'option':language==='Spanish'?'opción':language==='Arabic'?'خيار':'option'): (language==='Russian'?'варианта':language==='French'?'options':language==='Spanish'?'opciones':language==='Arabic'?'خيارات':'options')}</div></div>
 <div class="intro">${pdfEsc(labels.intro)}</div>
 ${translatedPlan?`<div class="section-kicker">${pdfEsc(labels.treatmentPlan)}</div><div class="diagnosis">${pdfEsc(translatedPlan)}</div><div class="translation-note">${pdfEsc(labels.translationNotice)}</div>`:''}
 ${optionsHtml}
