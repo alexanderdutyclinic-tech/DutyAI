@@ -1,14 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const button = document.getElementById('generatePdf');
+  const simpleButton = document.getElementById('generatePdf');
+  const premiumButton = document.getElementById('generatePremiumPdf');
 
-  if(button && typeof generateQuotationPdf === 'function'){
-    button.addEventListener('click', () => {
+  if (simpleButton && typeof generateQuotationPdf === 'function') {
+    simpleButton.addEventListener('click', () => {
       const originalOpen = window.open;
       let printWindow = null;
 
-      window.open = function(...args){
-        printWindow = originalOpen.apply(window,args);
-        if(printWindow){
+      window.open = function (...args) {
+        printWindow = originalOpen.apply(window, args);
+
+        if (printWindow) {
           printWindow.addEventListener('load', () => {
             const style = printWindow.document.createElement('style');
             style.textContent = `
@@ -20,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
             printWindow.document.head.appendChild(style);
           });
         }
+
         return printWindow;
       };
 
@@ -28,6 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
       } finally {
         window.open = originalOpen;
       }
+    });
+  }
+
+  if (premiumButton && typeof generatePremiumQuotationPdf === 'function') {
+    premiumButton.addEventListener('click', () => {
+      generatePremiumQuotationPdf();
     });
   }
 });
