@@ -6,15 +6,22 @@
   if (typeof originalCalculateOption !== 'function') return;
 
   window.calculateOption = function (card) {
-    const currency = document.getElementById('quoteCurrency')?.value || 'USD';
+    const currencySelect = document.getElementById('quoteCurrency');
+    const currency = currencySelect?.value || 'USD';
     if (currency !== 'EUR') return originalCalculateOption(card);
 
-    const currencySelect = document.getElementById('quoteCurrency');
     currencySelect.value = 'USD';
+    let result;
     try {
-      return originalCalculateOption(card);
+      result = originalCalculateOption(card);
     } finally {
       currencySelect.value = 'EUR';
     }
+
+    if (result && typeof window.money === 'function') {
+      const subtotal = card.querySelector('.option-subtotal');
+      if (subtotal) subtotal.textContent = window.money(result.subtotal);
+    }
+    return result;
   };
 })();
