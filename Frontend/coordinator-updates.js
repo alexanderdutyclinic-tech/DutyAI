@@ -3,7 +3,7 @@
 (function () {
   const CURRENCIES = {
     USD: { symbol: '$', rate: 1 },
-    EUR: { symbol: '€', rate: 1 / 1.1567 } // ECB reference: 1 EUR = 1.1567 USD (14 Aug 2026); editable in UI.
+    EUR: { symbol: '€', rate: 1 / 1.1567 }
   };
 
   let selectedCurrency = 'USD';
@@ -86,6 +86,22 @@
           if (!option.value) return;
           const item = window.DUTY_PRICING.crowns.find(p => p.id === option.value);
           if (item) option.textContent = `${item.displayName || item.name} — ${formatMoney(item.price)}`;
+        });
+      }
+
+      const transfer = card.querySelector('.transfer-option');
+      if (transfer) {
+        [...transfer.options].forEach(option => {
+          const value = Number(option.value) || 0;
+          option.textContent = value ? formatMoney(value) : 'Free';
+        });
+      }
+
+      const prosthesis = card.querySelector('.prosthesis-option');
+      if (prosthesis) {
+        [...prosthesis.options].forEach(option => {
+          const value = Number(option.value) || 0;
+          option.textContent = value ? formatMoney(value) : 'Not offered';
         });
       }
     });
@@ -181,7 +197,7 @@
       row.innerHTML = `
         <label class="check-item">
           <input type="checkbox" class="procedure-choice" data-price="${item.price}" data-unit="${esc(unit)}" value="${esc(item.id)}" checked>
-          ${esc(item.name)} — ${formatMoney(item.price)}${unit ? ` / ${esc(unit)}` : ''}
+          ${esc(item.name)} — ${formatMoney(item.price)}${unit ? ` / ${unit}` : ''}
           <button type="button" class="remove-procedure" aria-label="Remove">Remove</button>
         </label>
         ${unit ? `<div class="procedure-quantity"><label>Quantity (${esc(unit)})</label><input type="number" class="procedure-quantity-input" data-procedure-id="${esc(item.id)}" min="0" step="0.5" value="1"></div>` : ''}
@@ -337,4 +353,93 @@
     installPdfCurrency();
     installPdfVisibilityCss();
   });
+})();
+
+/* DutyAI PDF control fix.
+   The Premium renderer calls its internal functions directly, so changing only
+   window.premiumTreatmentRows/window.premiumVisitCard is not enough. This
+   wrapper calls the public HTML generator after coordinator state is captured,
+   then prints the resulting document. */
+(function () {
+  function moneyInCurrency(value, currency, rate) {
+    const amount = (Number(value) || 0) * (Number(rate) || 1);
+    const symbol = currency === 'EUR' ? '€' : '$';
+    return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: amount % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+  }
+
+  const originalPremiumPdf = window.generatePremiumQuotationPdf;
+
+  window.generatePremiumQuotationPdf = function () {
+    if (typeof window.buildQuotationData !== 'function' || typeof window.generatePremiumQuotationHtml !== 'function') {
+      if (typeof originalPremiumPdf === 'function') return originalPremiumPdf();
+      alert('Premium Proposal is not available. Please refresh the page.');
+      return;
+    }
+
+    const quotation = window.buildQuotationData();
+    let html = window.generatePremiumQuotationHtml(quotation);
+    const currency = quotation.display?.currency || 'USD';
+    const rate = Number(quotation.display?.usdToCurrencyRate) || 1;
+    const showProducts = quotation.display?.showProductPrices !== false;
+    const showHotels = quotation.display?.showHotelPrices !== false;
+
+    if (currency === 'EUR') {
+      html = html.replace(/\$([\d,]+(?:\.\d+)?)/g, (_, value) =>
+        moneyInCurrency(value.replace(/,/g, ''), currency, rate)
+      );
+    }
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    if (!showProducts) {
+      doc.querySelectorAll('.treatment-row').forEach(row => {
+        const cells = row.children;
+        if (cells.length >= 3) {
+          cells[cells.length - 1].textContent = 'Included';
+        }
+      });
+    }
+
+    if (!showHotels) {
+      doc.querySelectorAll('.visit-line').forEach(row => {
+        const price = row.querySelector(':scope > strong:last-child');
+        if (price) price.textContent = 'Included';
+      });
+    }
+
+    html = '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+    const printWindow = window.open('', '_blank');
+
+    if (!printWindow) {
+      alert('Please allow pop-ups for DutyAI to generate the Premium Proposal.');
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+
+    const printWhenReady = () => {
+      const images = Array.from(printWindow.document.images || []);
+      const waits = images.map(image => {
+        if (image.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+        });
+      });
+      Promise.all(waits).then(() => {
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+        }, 250);
+      });
+    };
+
+    if (printWindow.document.readyState === 'complete') {
+      printWhenReady();
+    } else {
+      printWindow.addEventListener('load', printWhenReady, { once: true });
+    }
+  };
 })();
