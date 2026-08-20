@@ -2,7 +2,7 @@
 // This layer prepares the already-calculated quotation for future PDF generation.
 // It does not perform a second pricing calculation.
 
-function getQuotationHotelDetails(hotelId, roomType, nights) {
+function getQuotationHotelDetails(hotelId, roomType, nights, manualNightlyPrice) {
   if (!hotelId) return null;
 
   const hotel = DUTY_PRICING.hotels.find(item => item.id === hotelId);
@@ -21,6 +21,10 @@ function getQuotationHotelDetails(hotelId, roomType, nights) {
     nightlyPrice = Number(hotel[roomType]);
   }
 
+  if (Number.isFinite(Number(manualNightlyPrice)) && Number(manualNightlyPrice) >= 0) {
+    nightlyPrice = Number(manualNightlyPrice);
+  }
+
   if (!Number.isFinite(nightlyPrice) || nightlyPrice < 0) nightlyPrice = 0;
 
   return {
@@ -31,7 +35,8 @@ function getQuotationHotelDetails(hotelId, roomType, nights) {
     nights: numberValue(nights),
     nightlyPrice,
     total: nightlyPrice * numberValue(nights),
-    currency: hotel.currency || 'USD'
+    currency: hotel.currency || 'USD',
+    manualNightlyPrice: Number.isFinite(Number(manualNightlyPrice)) ? Number(manualNightlyPrice) : null
   };
 }
 
@@ -41,84 +46,86 @@ function getQuotationProcedureDetails(card) {
       const procedure = DUTY_PRICING.procedures.find(item => item.id === choice.value);
       if (!procedure) return null;
 
-      const quantityInput = card.querySelector(
-        `.procedure-quantity-input[data-procedure-id="${choice.value}"]`
-      );
-
-      const quantity = procedure.unit
-        ? Math.max(0, numberValue(quantityInput?.value || 1))
-        : 1;
+      const quantityInput = card.querySelector(`.procedure-quantity-input[data-procedure-id="${choice.value}"]`);
+      const quantity = procedure.unit ? Math.max(0, numberValue(quantityInput?.value || 1)) : 1;
+      const manualPrice = Number(choice.dataset.finalPrice);
+      const unitPrice = Number.isFinite(manualPrice) && manualPrice >= 0 ? manualPrice : (Number(procedure.price) || 0);
 
       return {
         id: procedure.id,
         name: procedure.name,
         unit: procedure.unit || null,
         quantity,
-        unitPrice: Number(procedure.price) || 0,
-        total: (Number(procedure.price) || 0) * quantity
+        unitPrice,
+        baseUnitPrice: Number(procedure.price) || 0,
+        manualUnitPrice: Number.isFinite(manualPrice) && manualPrice >= 0 ? manualPrice : null,
+        total: unitPrice * quantity
       };
     })
     .filter(Boolean);
 }
+
 function getAutomaticOptionName(implant){
   if(!implant?.origin) return null;
-
   return `${implant.origin} Implant System`.toUpperCase();
 }
 
-// A name is still "default" if the coordinator never edited it away from the
-// auto-filled "Option N" placeholder set when the option card was created.
 function isDefaultOptionName(name){
   return /^Option \d+$/.test(name);
 }
 
 function getQuotationOptionName(card, implant, index){
   const customName = card.querySelector('.option-name')?.value?.trim() || '';
-
-  if(customName && !isDefaultOptionName(customName)){
-    return customName;
-  }
-
+  if(customName && !isDefaultOptionName(customName)) return customName;
   return getAutomaticOptionName(implant) || customName || `Option ${index + 1}`;
+}
+
+function getManualPrice(card, selector) {
+  const input = card.querySelector(selector);
+  if (!input || input.value === '') return null;
+  const value = Number(input.value);
+  return Number.isFinite(value) && value >= 0 ? value : null;
 }
 
 function getQuotationOptionData(card, index) {
   const result = calculateOption(card);
-
   const implant = getSelected(DUTY_PRICING.implants, card.querySelector('.implant-brand')?.value);
   const crown = getSelected(DUTY_PRICING.crowns, card.querySelector('.crown-brand')?.value);
   const implantMarkup = numberValue(card.querySelector('.implant-markup')?.value);
   const crownMarkup = numberValue(card.querySelector('.crown-markup')?.value);
   const visits = result.visits;
 
-  const visit1HotelId = visits === 1
-    ? card.querySelector('.one-visit-hotel')?.value
-    : card.querySelector('.visit1-hotel')?.value;
-  const visit1Room = visits === 1
-    ? card.querySelector('.one-visit-room')?.value || 'single'
-    : card.querySelector('.visit1-room')?.value || 'single';
-  const visit1Nights = visits === 1
-    ? card.querySelector('.one-visit-nights')?.value
-    : card.querySelector('.visit1-nights')?.value;
+  const visit1HotelId = visits === 1 ? card.querySelector('.one-visit-hotel')?.value : card.querySelector('.visit1-hotel')?.value;
+  const visit1Room = visits === 1 ? card.querySelector('.one-visit-room')?.value || 'single' : card.querySelector('.visit1-room')?.value || 'single';
+  const visit1Nights = visits === 1 ? card.querySelector('.one-visit-nights')?.value : card.querySelector('.visit1-nights')?.value;
   const visit2HotelId = visits === 2 ? card.querySelector('.visit2-hotel')?.value : '';
   const visit2Room = visits === 2 ? card.querySelector('.visit2-room')?.value || 'single' : 'single';
   const visit2Nights = visits === 2 ? card.querySelector('.visit2-nights')?.value : 0;
-  const transferPrice = numberValue(card.querySelector('.transfer-option')?.value);
-  const prosthesisPrice = numberValue(card.querySelector('.prosthesis-option')?.value);
+
+  const visit1HotelManual = visits === 1 ? getManualPrice(card, '.one-visit-hotel-price') : getManualPrice(card, '.visit1-hotel-price');
+  const visit2HotelManual = visits === 2 ? getManualPrice(card, '.visit2-hotel-price') : null;
+
+  const visit1Transfer = visits === 2
+    ? (getManualPrice(card, '.visit1-transfer-price') ?? numberValue(card.querySelector('.transfer-option')?.value))
+    : (getManualPrice(card, '.transfer-price') ?? numberValue(card.querySelector('.transfer-option')?.value));
+  const visit1Prosthesis = visits === 2
+    ? (getManualPrice(card, '.visit1-prosthesis-price') ?? numberValue(card.querySelector('.prosthesis-option')?.value))
+    : (getManualPrice(card, '.prosthesis-price') ?? numberValue(card.querySelector('.prosthesis-option')?.value));
 
   return {
-  id: card.dataset.optionId || `option-${index + 1}`,
-  name: getQuotationOptionName(card, implant, index),
-    treatment: { 
-  implants: { 
-    id: implant?.id || null, 
-    name: implant?.displayName || implant?.name || null,
-    quantity: result.totalImplants, 
-    baseUnitPrice: implant?.price || 0, 
-    markupPercent: implantMarkup, 
-    finalUnitPrice: result.implantUnitPrice, 
-    total: result.totalImplants * result.implantUnitPrice 
-  },
+    id: card.dataset.optionId || `option-${index + 1}`,
+    name: getQuotationOptionName(card, implant, index),
+    treatment: {
+      implants: {
+        id: implant?.id || null,
+        name: implant?.displayName || implant?.name || null,
+        quantity: result.totalImplants,
+        baseUnitPrice: implant?.price || 0,
+        markupPercent: implantMarkup,
+        finalUnitPrice: result.implantUnitPrice,
+        manualUnitPrice: getManualPrice(card, '.implant-final-price'),
+        total: result.totalImplants * result.implantUnitPrice
+      },
       crowns: {
         id: crown?.id || null,
         name: crown?.displayName || crown?.name || null,
@@ -126,6 +133,7 @@ function getQuotationOptionData(card, index) {
         baseUnitPrice: crown?.price || 0,
         markupPercent: crownMarkup,
         finalUnitPrice: result.crownUnitPrice,
+        manualUnitPrice: getManualPrice(card, '.crown-final-price'),
         total: result.totalCrowns * result.crownUnitPrice
       },
       procedures: getQuotationProcedureDetails(card)
@@ -134,10 +142,10 @@ function getQuotationOptionData(card, index) {
       count: visits,
       visit1: {
         crowns: result.visit1Crowns,
-        hotel: getQuotationHotelDetails(visit1HotelId, visit1Room, visit1Nights),
+        hotel: getQuotationHotelDetails(visit1HotelId, visit1Room, visit1Nights, visit1HotelManual),
         services: {
-          transfer: { name: 'VIP transfer', total: transferPrice },
-          prosthesis: { name: 'Dental prosthesis', total: prosthesisPrice },
+          transfer: { name: 'VIP transfer', total: result.visit1Transfer },
+          prosthesis: { name: 'Dental prosthesis', total: result.visit1Prosthesis },
           translator: { name: 'Translator', total: 0, included: true }
         },
         dentalTotal: result.visit1Dental,
@@ -146,7 +154,7 @@ function getQuotationOptionData(card, index) {
       },
       visit2: visits === 2 ? {
         crowns: result.visit2Crowns,
-        hotel: getQuotationHotelDetails(visit2HotelId, visit2Room, visit2Nights),
+        hotel: getQuotationHotelDetails(visit2HotelId, visit2Room, visit2Nights, visit2HotelManual),
         services: {
           transfer: { name: 'VIP transfer', total: result.visit2Transfer },
           prosthesis: { name: 'Dental prosthesis', total: result.visit2Prosthesis },
