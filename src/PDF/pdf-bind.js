@@ -47,5 +47,11 @@ setTimeout(() => {
   if (document.querySelector('script[src="/Frontend/coordinator-manual-pricing.js"]')) return;
   const script = document.createElement('script');
   script.src = '/Frontend/coordinator-manual-pricing.js';
+  script.onload = () => {
+    if (document.querySelector('script[src="/Frontend/coordinator-manual-currency-fix.js"]')) return;
+    const fix = document.createElement('script');
+    fix.src = '/Frontend/coordinator-manual-currency-fix.js';
+    document.head.appendChild(fix);
+  };
   document.head.appendChild(script);
 }, 0);
