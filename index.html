@@ -101,6 +101,17 @@
 <script src="src/PDF/pdf-generator-ar.js"></script>
 <script src="src/PDF/pdf-polish.js"></script>
 <script src="src/PDF/premium/premium-generator.js"></script>
+<script>
+(() => {
+  const assetBase = new URL('assets/', document.baseURI).href;
+  const rewriteAssets = (html) => String(html).replace(/(["'])\/assets\//g, `$1${assetBase}`);
+
+  if (typeof window.generatePremiumQuotationHtml === 'function') {
+    const originalPremiumHtml = window.generatePremiumQuotationHtml;
+    window.generatePremiumQuotationHtml = (quotation) => rewriteAssets(originalPremiumHtml(quotation));
+  }
+})();
+</script>
 <script src="src/PDF/pdf-ar-bind.js"></script>
 <script src="src/PDF/pdf-bind.js"></script>
 </body>
