@@ -26,9 +26,7 @@
 
   function formatRoundedMoney(value) {
     const currency = document.getElementById('quoteCurrency')?.value || 'USD';
-    const amount = currency === 'EUR'
-      ? roundCurrency(Number(value) * selectedRate())
-      : roundCurrency(value);
+    const amount = currency === 'EUR' ? roundCurrency(Number(value) * selectedRate()) : roundCurrency(value);
     const symbol = currency === 'EUR' ? '€' : '$';
     return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: amount % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
   }
@@ -66,14 +64,18 @@
     const wrapper = markup.closest('.percentage-input');
     const guidance = card.querySelector(`.${type}-markup-guidance`);
     const label = wrapper?.previousElementSibling;
+    const defaultMarkup = Number(markup.value) || 25;
 
     if (label?.tagName === 'LABEL') {
       label.textContent = `${type === 'implant' ? 'Implant' : 'Crown'} final unit price (USD)`;
     }
 
     if (wrapper) {
-      wrapper.innerHTML = `<input class="${type}-final-price" type="number" min="0" step="0.01" placeholder="Use standard price">`;
-      const input = wrapper.querySelector('input');
+      wrapper.innerHTML = `
+        <input class="${type}-markup" type="hidden" value="${defaultMarkup}">
+        <input class="${type}-final-price" type="number" min="0" step="0.01" placeholder="Use standard price">
+      `;
+      const input = wrapper.querySelector(`.${type}-final-price`);
       input.addEventListener('input', () => window.recalculateQuotation());
       input.addEventListener('change', () => window.recalculateQuotation());
     }
@@ -191,8 +193,7 @@
 
     if (hotel1ManualUsd != null) {
       const nights = result.visits === 1 ? Number(card.querySelector('.one-visit-nights')?.value || 0) : Number(card.querySelector('.visit1-nights')?.value || 0);
-      const newHotel = roundCurrency(hotel1ManualUsd * nights);
-      result.visit1Hotel = newHotel;
+      result.visit1Hotel = roundCurrency(hotel1ManualUsd * nights);
     }
 
     if (hotel2ManualUsd != null && result.visits === 2) {
@@ -222,7 +223,6 @@
 
   window.calculateOption = function (card) {
     enhanceCard(card);
-
     card.querySelectorAll('.procedure-choice').forEach(choice => {
       if (choice.dataset.finalPrice != null) choice.dataset.price = choice.dataset.finalPrice;
     });
@@ -241,18 +241,11 @@
     const patched = function () {
       const originalOpen = window.open;
       let printWindow = null;
-
       window.open = function (...args) {
         printWindow = originalOpen.apply(window, args);
         return printWindow;
       };
-
-      try {
-        originalSimplePdf();
-      } finally {
-        window.open = originalOpen;
-      }
-
+      try { originalSimplePdf(); } finally { window.open = originalOpen; }
       if (!printWindow) return;
 
       const inject = () => {
@@ -264,36 +257,36 @@
           if (!showProducts) {
             doc.querySelectorAll('.proposal-table').forEach(table => {
               const headers = [...table.querySelectorAll('thead th')].map(th => th.textContent.toLowerCase());
-              if (headers.includes('unit price')) {
-                const unitIndex = headers.indexOf('unit price');
-                const totalIndex = headers.indexOf('total');
+              if (headers.length === 4) {
                 table.querySelectorAll('tr').forEach(row => {
-                  if (row.children[unitIndex]) row.children[unitIndex].textContent = 'Included';
-                  if (row.children[totalIndex]) row.children[totalIndex].textContent = 'Included';
+                  if (row.children[2]) row.children[2].textContent = 'Included';
+                  if (row.children[3]) row.children[3].textContent = 'Included';
                 });
               }
             });
             doc.querySelectorAll('.visit-summary .visit-line').forEach(row => {
               const label = row.querySelector('span')?.textContent?.toLowerCase() || '';
-              if (label.includes('treatment') && row.querySelector('strong')) row.querySelector('strong').textContent = 'Included';
+              if (label.includes('treatment') || label.includes('лечение') || label.includes('traitement') || label.includes('tratamiento')) {
+                row.querySelector('strong')?.replaceChildren(doc.createTextNode('Included'));
+              }
             });
           }
 
           if (!showHotels) {
             doc.querySelectorAll('.proposal-table').forEach(table => {
               const headers = [...table.querySelectorAll('thead th')].map(th => th.textContent.toLowerCase());
-              if (headers.includes('price / night')) {
-                const nightIndex = headers.indexOf('price / night');
-                const totalIndex = headers.indexOf('total');
+              if (headers.length === 5) {
                 table.querySelectorAll('tbody tr').forEach(row => {
-                  if (row.children[nightIndex]) row.children[nightIndex].textContent = 'Included';
-                  if (row.children[totalIndex]) row.children[totalIndex].textContent = 'Included';
+                  if (row.children[3]) row.children[3].textContent = 'Included';
+                  if (row.children[4]) row.children[4].textContent = 'Included';
                 });
               }
             });
             doc.querySelectorAll('.visit-summary .visit-line').forEach(row => {
               const label = row.querySelector('span')?.textContent?.toLowerCase() || '';
-              if (label.includes('services') && row.querySelector('strong')) row.querySelector('strong').textContent = 'Included';
+              if (label.includes('services') || label.includes('услуг') || label.includes('services') || label.includes('servicios')) {
+                row.querySelector('strong')?.replaceChildren(doc.createTextNode('Included'));
+              }
             });
           }
 
@@ -313,15 +306,48 @@
       try { printWindow.addEventListener('load', inject, { once: true }); } catch (_) {}
       setTimeout(inject, 250);
     };
-
     patched.__dutyAiPatched = true;
     window.generateQuotationPdf = patched;
+  }
+
+  function patchPremiumPdfVisibility() {
+    const originalPremiumPdf = window.generatePremiumQuotationPdf;
+    if (typeof originalPremiumPdf !== 'function' || originalPremiumPdf.__dutyAiManualPatched) return;
+
+    const patched = function () {
+      const originalOpen = window.open;
+      let printWindow = null;
+      window.open = function (...args) {
+        printWindow = originalOpen.apply(window, args);
+        return printWindow;
+      };
+      try { originalPremiumPdf(); } finally { window.open = originalOpen; }
+      if (!printWindow) return;
+
+      const inject = () => {
+        try {
+          const showProducts = document.getElementById('showProductPrices')?.checked !== false;
+          const showHotels = document.getElementById('showHotelPrices')?.checked !== false;
+          const doc = printWindow.document;
+          if (!showProducts) {
+            doc.querySelectorAll('.treatment-row > strong:last-child').forEach(el => { el.textContent = 'Included'; });
+          }
+          if (!showHotels) {
+            doc.querySelectorAll('.visit-line > strong:last-child, .service-list > div > strong').forEach(el => { el.textContent = 'Included'; });
+          }
+        } catch (_) {}
+      };
+      try { printWindow.addEventListener('load', inject, { once: true }); } catch (_) {}
+      setTimeout(inject, 250);
+    };
+    patched.__dutyAiManualPatched = true;
+    window.generatePremiumQuotationPdf = patched;
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.quotation-option').forEach(enhanceCard);
     patchSimplePdfVisibility();
-
+    patchPremiumPdfVisibility();
     document.getElementById('quoteCurrency')?.addEventListener('change', () => {
       document.querySelectorAll('.quotation-option').forEach(enhanceCard);
       window.recalculateQuotation?.();
