@@ -40,3 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// Load the manual coordinator pricing layer after coordinator-updates.js has
+// executed, but before DOMContentLoaded initializes the quotation UI.
+setTimeout(() => {
+  if (document.querySelector('script[src="/Frontend/coordinator-manual-pricing.js"]')) return;
+  const script = document.createElement('script');
+  script.src = '/Frontend/coordinator-manual-pricing.js';
+  document.head.appendChild(script);
+}, 0);
