@@ -1,439 +1,105 @@
-/* DutyAI coordinator final pricing rules.
-   This layer is intentionally small and sits after the existing coordinator/pricing
-   extensions. It defines the coordinator-facing rules without changing the clinic's
-   base pricing data.
-
-   Coordinator manual overrides:
-   - Implant system: final unit price
-   - Crown system/material: final unit price
-   - Additional procedures: final unit price / unit
-   - Dental prosthesis: final service price
-
-   Not manually overridden:
-   - Hotels: always use standard Duty Clinic hotel pricing
-   - VIP transfer: fixed at $150 (converted for display currency)
-   - Translator: included/free
-
-   Manual values are entered/displayed in the coordinator-selected currency, while
-   the calculation layer stores them in USD internally. Currency conversion is
-   rounded to two decimals at every patient-facing currency boundary.
+/* DutyAI coordinator pricing controls.
+   Manual overrides: implants, crowns, additional procedures, VIP transfer, final quotation, Visit 1, Visit 2.
+   Fixed: dental prosthesis $200 once when selected; hotels always standard clinic pricing; translator included.
+   Manual values are entered in selected currency and stored internally as USD.
 */
 (function () {
-  const CURRENCIES = {
-    USD: { symbol: '$', rate: 1 },
-    EUR: { symbol: '€', rate: 1 / 1.1567 }
+  const CURRENCIES={USD:{symbol:'$',rate:1},EUR:{symbol:'€',rate:1/1.1567}};
+  const TRANSFER_USD=150, PROSTHESIS_USD=200;
+  const currency=()=>document.getElementById('quoteCurrency')?.value||'USD';
+  const rate=()=>currency()==='EUR'?(Number(document.getElementById('eurRate')?.value)>0?Number(document.getElementById('eurRate').value):CURRENCIES.EUR.rate):1;
+  const round=v=>Math.round((Number(v)+Number.EPSILON)*100)/100;
+  const toDisplay=usd=>round(Number(usd||0)*rate());
+  const toUsd=value=>round(Number(value||0)/rate());
+  const money=usd=>{const a=toDisplay(usd),s=CURRENCIES[currency()]?.symbol||'$';return `${s}${a.toLocaleString('en-US',{minimumFractionDigits:a%1?2:0,maximumFractionDigits:2})}`;};
+  window.money=money;window.pdfMoney=money;window.premiumMoney=money;window.roundCurrency=round;
+
+  function manualUsd(input){
+    if(!input||input.value==='')return null;
+    const stored=Number(input.dataset.usdValue);
+    if(Number.isFinite(stored)&&stored>=0)return round(stored);
+    const v=Number(input.value);return Number.isFinite(v)&&v>=0?toUsd(v):null;
+  }
+  function bind(input){
+    if(!input||input.dataset.bound==='1')return;
+    input.dataset.bound='1';
+    input.addEventListener('input',()=>{input.dataset.usdValue=input.value===''?'':String(toUsd(input.value));window.recalculateQuotation?.();});
+    input.addEventListener('change',()=>window.recalculateQuotation?.());
+  }
+  function addField(parent,cls,label,help){
+    if(!parent)return null;
+    const old=parent.querySelector('.'+cls);if(old)return old;
+    const w=document.createElement('div');w.className='duty-manual-field';
+    w.innerHTML=`<label>${label}</label><input class="${cls}" type="number" min="0" step="0.01" placeholder="Use standard price (${currency()})"><small>${help||''}</small>`;
+    parent.appendChild(w);const input=w.querySelector('input');bind(input);return input;
+  }
+  function convertFields(card){
+    card.querySelectorAll('.implant-final-price,.crown-final-price,.procedure-final-price,.transfer-final-price,.final-quotation-price,.visit1-final-price,.visit2-final-price').forEach(i=>{const u=manualUsd(i);if(u!=null)i.value=String(toDisplay(u));i.placeholder=`Use standard price (${currency()})`;});
+    card.querySelectorAll('.duty-manual-field label').forEach(l=>{
+      const row=l.closest('.procedure-item'),unit=row?.querySelector('.procedure-choice')?.dataset.unit||'';
+      if(row)l.textContent=`Final price${unit?` / ${unit}`:''} (${currency()})`;
+    });
+    card.querySelector('.implant-final-price')?.closest('.duty-manual-field')?.querySelector('label')&&(card.querySelector('.implant-final-price').closest('.duty-manual-field').querySelector('label').textContent=`Implant final unit price (${currency()})`);
+    card.querySelector('.crown-final-price')?.closest('.duty-manual-field')?.querySelector('label')&&(card.querySelector('.crown-final-price').closest('.duty-manual-field').querySelector('label').textContent=`Crown final unit price (${currency()})`);
+    card.querySelector('.transfer-final-price')?.closest('.duty-manual-field')?.querySelector('label')&&(card.querySelector('.transfer-final-price').closest('.duty-manual-field').querySelector('label').textContent=`VIP transfer final price (${currency()})`);
+    card.querySelector('.final-quotation-price')?.closest('.duty-visit-pricing')?.querySelector('label')&&(card.querySelector('.final-quotation-price').closest('.duty-visit-pricing').querySelectorAll('label')[0].textContent=`Final quotation price (${currency()})`);
+    card.querySelector('.visit1-final-price')?.closest('.duty-visit-pricing')?.querySelectorAll('label')[1]&&(card.querySelector('.visit1-final-price').closest('.duty-visit-pricing').querySelectorAll('label')[1].textContent=`Visit 1 final price (${currency()})`);
+    card.querySelector('.visit2-final-price')?.closest('.duty-visit-pricing')?.querySelectorAll('label')[2]&&(card.querySelector('.visit2-final-price').closest('.duty-visit-pricing').querySelectorAll('label')[2].textContent=`Visit 2 final price (${currency()})`);
+  }
+
+  function addToolbar(){
+    const toolbar=document.querySelector('.option-toolbar');if(!toolbar||document.getElementById('quoteCurrency'))return;
+    const w=document.createElement('div');w.innerHTML=`<label>Display currency</label><select id="quoteCurrency"><option value="USD">USD — US Dollar</option><option value="EUR">EUR — Euro</option></select><div id="eurRateWrap" class="hidden"><label>1 USD = EUR</label><input id="eurRate" type="number" min="0.0001" step="0.0001" value="${CURRENCIES.EUR.rate.toFixed(4)}"><small>Coordinator-controlled reference rate.</small></div>`;toolbar.appendChild(w);
+    document.getElementById('quoteCurrency').addEventListener('change',()=>{document.getElementById('eurRateWrap').classList.toggle('hidden',currency()!=='EUR');document.querySelectorAll('.quotation-option').forEach(convertFields);window.recalculateQuotation?.();});
+    document.getElementById('eurRate').addEventListener('input',()=>{document.querySelectorAll('.quotation-option').forEach(convertFields);window.recalculateQuotation?.();});
+  }
+  function addVisibility(){
+    if(document.getElementById('showProductPrices'))return;const anchor=document.getElementById('quotationOptions');if(!anchor)return;
+    const b=document.createElement('div');b.className='coordinator-visibility';b.innerHTML='<strong>Patient PDF price details</strong><label><input type="checkbox" id="showProductPrices" checked> Show product / treatment price details</label><label><input type="checkbox" id="showHotelPrices" checked> Show hotel price details</label>';anchor.parentNode.insertBefore(b,anchor);
+  }
+  function enhanceProducts(card){
+    card.querySelectorAll('.implant-markup,.crown-markup').forEach(i=>{i.closest('.percentage-input')?.classList.add('hidden');i.closest('.percentage-input')?.previousElementSibling?.classList.add('hidden');});
+    const is=card.querySelector('.implant-brand'),cs=card.querySelector('.crown-brand');
+    if(is)addField(is.parentElement,'implant-final-price',`Implant final unit price (${currency()})`,'Leave empty to use the standard implant price.');
+    if(cs)addField(cs.parentElement,'crown-final-price',`Crown final unit price (${currency()})`,'Leave empty to use the standard crown price.');
+  }
+  function enhanceProcedures(card){
+    card.querySelectorAll('.procedure-item').forEach(row=>{const c=row.querySelector('.procedure-choice');if(!c)return;const input=addField(row,'procedure-final-price',`Final price${c.dataset.unit?` / ${c.dataset.unit}`:''} (${currency()})`,'Leave empty to use the standard procedure price.');if(!input)return;input.closest('.duty-manual-field').classList.toggle('hidden',!c.checked);if(c.dataset.dutyBound!=='1'){c.dataset.dutyBound='1';c.addEventListener('change',()=>{input.closest('.duty-manual-field').classList.toggle('hidden',!c.checked);window.recalculateQuotation?.();});}});
+  }
+  function enhanceServices(card){
+    const t=card.querySelector('.transfer-option');
+    if(t){t.disabled=false;t.innerHTML=`<option value="0">Free</option><option value="${TRANSFER_USD}">${money(TRANSFER_USD)}</option>`;if(![...t.options].some(o=>o.value===t.value))t.value=String(TRANSFER_USD);addField(t.parentElement,'transfer-final-price',`VIP transfer final price (${currency()})`,'Leave empty to use Free or the standard $150 transfer.');}
+    const p=card.querySelector('.prosthesis-option');
+    if(p){p.disabled=true;p.innerHTML=`<option value="${PROSTHESIS_USD}">${money(PROSTHESIS_USD)}</option>`;p.value=String(PROSTHESIS_USD);}
+  }
+  function enhanceVisits(card){
+    if(card.querySelector('.duty-visit-pricing'))return;const total=card.querySelector('.option-total');if(!total)return;
+    const b=document.createElement('div');b.className='duty-visit-pricing';b.innerHTML=`<h4>Coordinator final pricing</h4><label>Final quotation price (${currency()})</label><input class="final-quotation-price" type="number" min="0" step="0.01" placeholder="Use automatic total (${currency()})"><small>Optional master total. Visit prices will be allocated from this total.</small><label>Visit 1 final price (${currency()})</label><input class="visit1-final-price" type="number" min="0" step="0.01" placeholder="Use automatic Visit 1 (${currency()})"><small>If entered, Visit 2 becomes the remaining amount.</small><label>Visit 2 final price (${currency()})</label><input class="visit2-final-price" type="number" min="0" step="0.01" placeholder="Use automatic Visit 2 (${currency()})"><small>If entered, Visit 1 becomes the remaining amount.</small><div class="duty-visit-pricing-status"></div>`;total.parentNode.insertBefore(b,total);b.querySelectorAll('input').forEach(bind);
+  }
+  function enhance(card){enhanceProducts(card);enhanceProcedures(card);enhanceServices(card);enhanceVisits(card);convertFields(card);}
+
+  const originalCalculateOption=window.calculateOption;
+  window.calculateOption=function(card){
+    enhance(card);const r=originalCalculateOption(card);if(!r)return r;
+    let baseProc=0,finalProc=0;
+    card.querySelectorAll('.procedure-choice:checked').forEach(c=>{const base=Number(c.dataset.price)||0,unit=c.dataset.unit||'';const q=unit?Math.max(0,Number(card.querySelector(`.procedure-quantity-input[data-procedure-id="${CSS.escape(c.value)}"]`)?.value||1)):1;const m=manualUsd(c.closest('.procedure-item')?.querySelector('.procedure-final-price'));baseProc+=base*q;finalProc+=(m==null?base:m)*q;if(m!=null)c.dataset.finalPrice=String(m);else delete c.dataset.finalPrice;});
+    r.visit1Dental=round(r.visit1Dental-baseProc+finalProc);
+    const im=manualUsd(card.querySelector('.implant-final-price')),cr=manualUsd(card.querySelector('.crown-final-price'));
+    if(im!=null){const old=Number(r.implantUnitPrice)||0;r.implantUnitPrice=im;r.visit1Dental=round(r.visit1Dental-r.totalImplants*old+r.totalImplants*im);}
+    if(cr!=null){const old=Number(r.crownUnitPrice)||0;r.crownUnitPrice=cr;r.visit1CrownTotal=round(r.visit1Crowns*cr);r.visit2CrownTotal=round(r.visit2Crowns*cr);r.visit1Dental=round(r.visit1Dental-r.visit1Crowns*old+r.visit1CrownTotal);r.visit2Dental=round(r.visit2Dental-r.visit2Crowns*old+r.visit2CrownTotal);}
+    const transferManual=manualUsd(card.querySelector('.transfer-final-price'));const selectedTransfer=Number(card.querySelector('.transfer-option')?.value||0);r.visit1Transfer=transferManual==null?selectedTransfer:transferManual;r.visit2Transfer=0;r.visit1Prosthesis=PROSTHESIS_USD;r.visit2Prosthesis=0;
+    r.visit1Services=round((r.visit1Hotel||0)+r.visit1Transfer+r.visit1Prosthesis);r.visit2Services=round((r.visit2Hotel||0)+r.visit2Transfer+r.visit2Prosthesis);r.visit1Total=round(r.visit1Dental+r.visit1Services);r.visit2Total=round(r.visit2Dental+r.visit2Services);
+    const autoTotal=round(r.visit1Total+r.visit2Total);const fi=manualUsd(card.querySelector('.final-quotation-price')),v1i=manualUsd(card.querySelector('.visit1-final-price')),v2i=manualUsd(card.querySelector('.visit2-final-price'));const target=fi==null?autoTotal:fi;let v1=r.visit1Total,v2=r.visit2Total;const status=card.querySelector('.duty-visit-pricing-status');
+    if(v1i!=null&&v2i==null){v1=v1i;v2=round(target-v1);}else if(v2i!=null&&v1i==null){v2=v2i;v1=round(target-v2);}else if(v1i!=null&&v2i!=null){v1=v1i;v2=v2i;}else{v1=r.visit1Total;v2=round(target-v1);}
+    if(v2<0){v2=0;v1=target;if(status)status.textContent='Warning: the selected total is below the selected Visit 1 price.';}else if(status)status.textContent=`Final: ${money(target)} • Visit 1: ${money(v1)} • Visit 2: ${money(v2)}`;
+    r.visit1Total=round(v1);r.visit2Total=round(v2);r.subtotal=(v1i!=null&&v2i!=null)?round(v1+v2):round(target);
+    card.querySelector('.option-subtotal')?.replaceChildren(document.createTextNode(money(r.subtotal)));return r;
   };
 
-  const FIXED_TRANSFER_USD = 150;
-
-  function getCurrency() {
-    return document.getElementById('quoteCurrency')?.value || 'USD';
-  }
-
-  function getRate() {
-    if (getCurrency() !== 'EUR') return 1;
-    const value = Number(document.getElementById('eurRate')?.value);
-    return value > 0 ? value : CURRENCIES.EUR.rate;
-  }
-
-  function roundCurrency(value, decimals = 2) {
-    const factor = 10 ** decimals;
-    return Math.round((Number(value) + Number.EPSILON) * factor) / factor;
-  }
-
-  function usdToDisplay(value) {
-    return roundCurrency(Number(value) * getRate());
-  }
-
-  function displayToUsd(value) {
-    const rate = getRate();
-    return roundCurrency(Number(value) / rate);
-  }
-
-  function symbol() {
-    return CURRENCIES[getCurrency()]?.symbol || '$';
-  }
-
-  function money(value) {
-    const amount = usdToDisplay(value);
-    return `${symbol()}${amount.toLocaleString('en-US', {
-      minimumFractionDigits: amount % 1 ? 2 : 0,
-      maximumFractionDigits: 2
-    })}`;
-  }
-
-  window.roundCurrency = roundCurrency;
-  window.money = money;
-  window.pdfMoney = money;
-  window.premiumMoney = money;
-
-  function setFieldDisplay(input, usdValue) {
-    if (!input) return;
-    input.value = usdValue == null ? '' : String(usdToDisplay(usdValue));
-    input.dataset.usdValue = usdValue == null ? '' : String(roundCurrency(usdValue));
-  }
-
-  function getManualUsd(input) {
-    if (!input) return null;
-    if (input.dataset.usdValue !== undefined && input.value !== '') {
-      const stored = Number(input.dataset.usdValue);
-      if (Number.isFinite(stored) && stored >= 0) return roundCurrency(stored);
-    }
-    if (input.value === '') return null;
-    const value = Number(input.value);
-    return Number.isFinite(value) && value >= 0 ? displayToUsd(value) : null;
-  }
-
-  function makeManualField(parent, selector, label, help) {
-    if (!parent || parent.querySelector(selector)) return parent.querySelector(selector);
-
-    const wrap = document.createElement('div');
-    wrap.className = 'duty-final-price-field';
-    wrap.innerHTML = `
-      <label>${label}</label>
-      <input class="${selector.slice(1)}" type="number" min="0" step="0.01" placeholder="Use standard price">
-      <small>${help || 'Leave empty to use the standard price.'}</small>
-    `;
-    parent.appendChild(wrap);
-
-    const input = wrap.querySelector('input');
-    input.addEventListener('input', () => {
-      if (input.value === '') {
-        input.dataset.usdValue = '';
-      } else {
-        const value = Number(input.value);
-        if (Number.isFinite(value) && value >= 0) {
-          input.dataset.usdValue = String(displayToUsd(value));
-        }
-      }
-      window.recalculateQuotation?.();
-    });
-    input.addEventListener('change', () => window.recalculateQuotation?.());
-    return input;
-  }
-
-  function convertExistingField(input) {
-    if (!input) return;
-    const usd = getManualUsd(input);
-    if (usd != null) setFieldDisplay(input, usd);
-  }
-
-  function removeLegacyManualField(card, selectors) {
-    selectors.forEach(selector => card.querySelectorAll(selector).forEach(el => {
-      const wrap = el.closest('.manual-price-field');
-      if (wrap) wrap.remove();
-    }));
-  }
-
-  function normalizeTransfer(card) {
-    const select = card.querySelector('.transfer-option');
-    if (!select) return;
-
-    select.innerHTML = `<option value="${FIXED_TRANSFER_USD}">${money(FIXED_TRANSFER_USD)}</option>`;
-    select.value = String(FIXED_TRANSFER_USD);
-    select.disabled = true;
-    select.title = 'VIP transfer is fixed at $150 and only changes with the selected display currency.';
-  }
-
-  function normalizeProductLabels(card) {
-    const implantMarkup = card.querySelector('.implant-markup');
-    const crownMarkup = card.querySelector('.crown-markup');
-
-    const implantLabel = implantMarkup?.closest('.percentage-input')?.previousElementSibling;
-    const crownLabel = crownMarkup?.closest('.percentage-input')?.previousElementSibling;
-
-    if (implantLabel?.tagName === 'LABEL') implantLabel.textContent = `Implant final unit price (${getCurrency()})`;
-    if (crownLabel?.tagName === 'LABEL') crownLabel.textContent = `Crown final unit price (${getCurrency()})`;
-
-    const implantGuidance = card.querySelector('.implant-markup-guidance');
-    const crownGuidance = card.querySelector('.crown-markup-guidance');
-    if (implantGuidance) implantGuidance.textContent = 'Enter the exact final unit price. Leave empty to use the standard price.';
-    if (crownGuidance) crownGuidance.textContent = 'Enter the exact final unit price. Leave empty to use the standard price.';
-  }
-
-  function enhanceProductFields(card) {
-    normalizeProductLabels(card);
-
-    const implantInput = card.querySelector('.implant-final-price');
-    const crownInput = card.querySelector('.crown-final-price');
-
-    [implantInput, crownInput].forEach(input => {
-      if (!input) return;
-      input.placeholder = `Use standard price (${getCurrency()})`;
-      input.dataset.currencyBound = 'true';
-      if (!input.dataset.usdValue && input.value !== '') {
-        input.dataset.usdValue = String(displayToUsd(input.value));
-      }
-    });
-  }
-
-  function enhanceProcedures(card) {
-    card.querySelectorAll('.selected-procedure').forEach(row => {
-      const input = row.querySelector('.procedure-final-price');
-      const choice = row.querySelector('.procedure-choice');
-      if (!input || !choice) return;
-
-      input.closest('.procedure-manual-price')?.querySelector('label')?.replaceChildren(
-        document.createTextNode(`Final price${choice.dataset.unit ? ` / ${choice.dataset.unit}` : ''} (${getCurrency()})`)
-      );
-      input.placeholder = `Use standard price (${getCurrency()})`;
-
-      if (!input.dataset.usdValue && input.value !== '') {
-        const oldValue = Number(input.value);
-        if (Number.isFinite(oldValue)) input.dataset.usdValue = String(displayToUsd(oldValue));
-      }
-
-      if (input.dataset.finalCurrencyBound !== 'true') {
-        input.dataset.finalCurrencyBound = 'true';
-        input.addEventListener('input', () => {
-          const value = Number(input.value);
-          if (Number.isFinite(value) && value >= 0) {
-            input.dataset.usdValue = String(displayToUsd(value));
-            choice.dataset.finalPrice = input.dataset.usdValue;
-          } else {
-            input.dataset.usdValue = '';
-            delete choice.dataset.finalPrice;
-          }
-          window.recalculateQuotation?.();
-        });
-      }
-
-      if (input.dataset.usdValue !== '') {
-        choice.dataset.finalPrice = input.dataset.usdValue;
-      }
-    });
-  }
-
-  function enhanceCard(card) {
-    if (!card) return;
-
-    // Hotels are standard/fixed. Remove the old manual hotel controls.
-    removeLegacyManualField(card, [
-      '.one-visit-hotel-price',
-      '.visit1-hotel-price',
-      '.visit2-hotel-price'
-    ]);
-
-    // VIP transfer is fixed at $150. Remove the old manual transfer controls.
-    removeLegacyManualField(card, [
-      '.transfer-price',
-      '.visit1-transfer-price',
-      '.visit2-transfer-price'
-    ]);
-    normalizeTransfer(card);
-
-    // The old global final-price override is intentionally removed. Pricing is
-    // controlled only at the permitted product/service level.
-    card.querySelector('.manual-final-price')?.remove();
-
-    // Dental prosthesis remains coordinator-overridable.
-    const services = card.querySelector('.visit-services');
-    const prosthesisSelect = card.querySelector('.prosthesis-option');
-    if (services && prosthesisSelect) {
-      let field = card.querySelector('.prosthesis-final-price');
-      if (!field) {
-        field = makeManualField(
-          services,
-          '.prosthesis-final-price',
-          `Dental prosthesis final price (${getCurrency()})`,
-          'Leave empty to use the selected standard prosthesis price.'
-        );
-      }
-      field.placeholder = `Use standard price (${getCurrency()})`;
-      if (field.dataset.usdValue === undefined && field.value !== '') {
-        field.dataset.usdValue = String(displayToUsd(field.value));
-      }
-    }
-
-    enhanceProductFields(card);
-    enhanceProcedures(card);
-  }
-
-  function refreshCurrencyFields() {
-    document.querySelectorAll('.quotation-option').forEach(card => {
-      normalizeTransfer(card);
-      normalizeProductLabels(card);
-
-      card.querySelectorAll('.implant-final-price, .crown-final-price, .prosthesis-final-price, .procedure-final-price').forEach(input => {
-        const usd = getManualUsd(input);
-        if (usd != null) setFieldDisplay(input, usd);
-        input.placeholder = `Use standard price (${getCurrency()})`;
-      });
-
-      enhanceProcedures(card);
-    });
-  }
-
-  const previousCalculateOption = window.calculateOption;
-
-  function applyExactOverrides(card, result) {
-    if (!result) return result;
-
-    const implantInput = card.querySelector('.implant-final-price');
-    const crownInput = card.querySelector('.crown-final-price');
-    const prosthesisInput = card.querySelector('.prosthesis-final-price');
-
-    const implantUsd = getManualUsd(implantInput);
-    const crownUsd = getManualUsd(crownInput);
-    const prosthesisUsd = getManualUsd(prosthesisInput);
-
-    // Rebuild dental totals from exact manual product prices.
-    if (implantUsd != null) {
-      const old = Number(result.implantUnitPrice) || 0;
-      const unit = roundCurrency(implantUsd);
-      result.implantUnitPrice = unit;
-      result.visit1Dental = roundCurrency(result.visit1Dental - (result.totalImplants * old) + (result.totalImplants * unit));
-    }
-
-    if (crownUsd != null) {
-      const old = Number(result.crownUnitPrice) || 0;
-      const unit = roundCurrency(crownUsd);
-      result.crownUnitPrice = unit;
-      result.visit1CrownTotal = roundCurrency(result.visit1Crowns * unit);
-      result.visit2CrownTotal = roundCurrency(result.visit2Crowns * unit);
-      result.visit1Dental = roundCurrency(result.visit1Dental - (result.visit1Crowns * old) + result.visit1CrownTotal);
-      result.visit2Dental = roundCurrency(result.visit2Dental - (result.visit2Crowns * old) + result.visit2CrownTotal);
-    }
-
-    // Procedures are stored as USD in data-price/finalPrice. The visible input
-    // is in the selected currency.
-    card.querySelectorAll('.selected-procedure').forEach(row => {
-      const choice = row.querySelector('.procedure-choice');
-      const input = row.querySelector('.procedure-final-price');
-      if (choice && input) {
-        const usd = getManualUsd(input);
-        if (usd != null) choice.dataset.finalPrice = String(roundCurrency(usd));
-        else delete choice.dataset.finalPrice;
-      }
-    });
-
-    // Dental prosthesis is a service, while hotel and transfer remain standard.
-    if (prosthesisUsd != null) {
-      result.visit1Prosthesis = roundCurrency(prosthesisUsd);
-    }
-
-    // Transfer is always $150 internally.
-    result.visit1Transfer = FIXED_TRANSFER_USD;
-    if (result.visits === 2) result.visit2Transfer = 0;
-
-    result.visit1Services = roundCurrency(
-      (result.visit1Hotel || 0) +
-      (result.visit1Transfer || 0) +
-      (result.visit1Prosthesis || 0)
-    );
-    result.visit2Services = roundCurrency(
-      (result.visit2Hotel || 0) +
-      (result.visit2Transfer || 0) +
-      (result.visit2Prosthesis || 0)
-    );
-    result.visit1Total = roundCurrency(result.visit1Dental + result.visit1Services);
-    result.visit2Total = roundCurrency(result.visit2Dental + result.visit2Services);
-    result.subtotal = roundCurrency(result.visit1Total + result.visit2Total);
-
-    return result;
-  }
-
-  window.calculateOption = function (card) {
-    enhanceCard(card);
-
-    if (typeof previousCalculateOption !== 'function') return null;
-
-    const result = previousCalculateOption(card);
-    const final = applyExactOverrides(card, result);
-
-    const subtotal = card.querySelector('.option-subtotal');
-    if (subtotal && final) subtotal.textContent = money(final.subtotal);
-
-    return final;
-  };
-
-  // Keep quotation data consistent with the exact manual values and prevent
-  // hotels from being marked as manually overridden.
-  const previousBuildQuotationData = window.buildQuotationData;
-  window.buildQuotationData = function () {
-    const data = typeof previousBuildQuotationData === 'function'
-      ? previousBuildQuotationData()
-      : null;
-    if (!data) return data;
-
-    data.options?.forEach((option, index) => {
-      const card = document.querySelectorAll('.quotation-option')[index];
-      if (!card) return;
-
-      option.treatment ||= {};
-      option.treatment.implants ||= {};
-      option.treatment.crowns ||= {};
-
-      const implantUsd = getManualUsd(card.querySelector('.implant-final-price'));
-      const crownUsd = getManualUsd(card.querySelector('.crown-final-price'));
-      const prosthesisUsd = getManualUsd(card.querySelector('.prosthesis-final-price'));
-
-      if (implantUsd != null) {
-        option.treatment.implants.manualUnitPrice = roundCurrency(implantUsd);
-        option.treatment.implants.finalUnitPrice = roundCurrency(implantUsd);
-        option.treatment.implants.total = roundCurrency(option.treatment.implants.quantity * implantUsd);
-      }
-
-      if (crownUsd != null) {
-        option.treatment.crowns.manualUnitPrice = roundCurrency(crownUsd);
-        option.treatment.crowns.finalUnitPrice = roundCurrency(crownUsd);
-        option.treatment.crowns.total = roundCurrency(option.treatment.crowns.quantity * crownUsd);
-      }
-
-      option.treatment.procedures?.forEach(proc => {
-        const input = card.querySelector(`.procedure-final-price`);
-        if (input) {
-          const usd = getManualUsd(input);
-          if (usd != null) {
-            proc.manualUnitPrice = roundCurrency(usd);
-            proc.unitPrice = roundCurrency(usd);
-            proc.total = roundCurrency(usd * (Number(proc.quantity) || 1));
-          }
-        }
-      });
-
-      if (prosthesisUsd != null) {
-        option.visits?.visit1?.services && (option.visits.visit1.services.prosthesis.total = roundCurrency(prosthesisUsd));
-      }
-
-      // Explicitly mark hotels as standard pricing; no coordinator hotel override.
-      [option.visits?.visit1?.hotel, option.visits?.visit2?.hotel].forEach(hotel => {
-        if (hotel) hotel.manualNightlyPrice = null;
-      });
-
-      if (option.visits?.visit1?.services?.transfer) {
-        option.visits.visit1.services.transfer.total = FIXED_TRANSFER_USD;
-      }
-
-      option.displayCurrency = getCurrency();
-      option.displayRate = getRate();
-    });
-
-    return data;
-  };
-
-  function patchCoordinatorCurrencyControl() {
-    const currency = document.getElementById('quoteCurrency');
-    if (!currency || currency.dataset.finalPricingBound === 'true') return;
-    currency.dataset.finalPricingBound = 'true';
-
-    currency.addEventListener('change', () => {
-      // Existing values are stored as USD in data-usd-value; only the display changes.
-      setTimeout(refreshCurrencyFields, 0);
-    });
-
-    document.getElementById('eurRate')?.addEventListener('input', () => {
-      setTimeout(refreshCurrencyFields, 0);
-    });
-  }
-
-  function init() {
-    document.querySelectorAll('.quotation-option').forEach(enhanceCard);
-    patchCoordinatorCurrencyControl();
-    refreshCurrencyFields();
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(init, 0);
-  });
+  const originalBuildQuotationData=window.buildQuotationData;
+  window.buildQuotationData=function(){const data=originalBuildQuotationData?.();if(!data)return data;data.display||={};data.display.currency=currency();data.display.usdToCurrencyRate=rate();data.options?.forEach((o,i)=>{const c=document.querySelectorAll('.quotation-option')[i];if(!c)return;o.coordinatorPricing={finalQuotationPriceUsd:manualUsd(c.querySelector('.final-quotation-price')),visit1FinalPriceUsd:manualUsd(c.querySelector('.visit1-final-price')),visit2FinalPriceUsd:manualUsd(c.querySelector('.visit2-final-price')),transferManualUsd:manualUsd(c.querySelector('.transfer-final-price'))};o.displayCurrency=currency();if(o.visits?.visit1)o.visits.visit1.total=calculateOption(c).visit1Total;if(o.visits?.visit2)o.visits.visit2.total=calculateOption(c).visit2Total;if(o.totals)o.totals.total=calculateOption(c).subtotal;[o.visits?.visit1?.hotel,o.visits?.visit2?.hotel].forEach(h=>{if(h)h.manualNightlyPrice=null;});if(o.visits?.visit1?.services?.prosthesis)o.visits.visit1.services.prosthesis.total=PROSTHESIS_USD;});return data;};
+
+  function init(){addToolbar();addVisibility();document.querySelectorAll('.quotation-option').forEach(enhance);}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+  new MutationObserver(()=>document.querySelectorAll('.quotation-option').forEach(enhance)).observe(document.body,{childList:true,subtree:true});
 })();
