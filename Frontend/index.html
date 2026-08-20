@@ -104,5 +104,48 @@
 <script src="/src/PDF/pdf-ar-bind.js"></script>
 <script src="/src/PDF/pdf-bind.js"></script>
 <script src="/Frontend/coordinator-updates.js"></script>
+<script>
+(() => {
+  const original = window.generatePremiumQuotationHtml;
+  if (typeof original !== 'function' || original.__dutyAiDisplayPatched) return;
+
+  const money = (value, symbol, rate) => {
+    const amount = (Number(value) || 0) * rate;
+    return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: amount % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+  };
+
+  const patched = function (quotation) {
+    let html = original(quotation);
+    const currency = quotation?.display?.currency || document.getElementById('quoteCurrency')?.value || 'USD';
+    const rate = Number(quotation?.display?.usdToCurrencyRate) || 1;
+    const symbol = currency === 'EUR' ? '€' : '$';
+
+    if (symbol !== '$' || rate !== 1) {
+      html = html.replace(/\$([\d,]+(?:\.\d+)?)/g, (_, value) => money(value.replace(/,/g, ''), symbol, rate));
+    }
+
+    const showProducts = document.getElementById('showProductPrices')?.checked ?? true;
+    const showHotels = document.getElementById('showHotelPrices')?.checked ?? true;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    if (!showProducts) {
+      doc.querySelectorAll('.treatment-row').forEach(row => {
+        const cells = row.children;
+        if (cells.length >= 3) cells[cells.length - 1].textContent = 'Included';
+      });
+      doc.querySelectorAll('.service-list > div > strong').forEach(el => { el.textContent = 'Included'; });
+    }
+
+    if (!showHotels) {
+      doc.querySelectorAll('.visit-line > strong').forEach(el => { el.textContent = 'Included'; });
+    }
+
+    return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+  };
+
+  patched.__dutyAiDisplayPatched = true;
+  window.generatePremiumQuotationHtml = patched;
+})();
+</script>
 </body>
 </html>
