@@ -56,7 +56,7 @@
     <div class="section-heading">
       <div>
         <h2>4. Quotation options</h2>
-        <p>Build one or more patient-facing options. Official prices come from Duty Clinic pricing data; coordinator markup is added separately.</p>
+        <p>Build one or more patient-facing options. Standard clinic prices remain the defaults; coordinator final prices can be set for approved products and services.</p>
       </div>
       <button class="secondary" id="addOption">+ Add option</button>
     </div>
@@ -104,6 +104,7 @@
 <script src="/src/PDF/pdf-ar-bind.js"></script>
 <script src="/src/PDF/pdf-bind.js"></script>
 <script src="/Frontend/coordinator-updates.js"></script>
+<script src="/Frontend/coordinator-final-pricing.js"></script>
 <script>
 (() => {
   const original = window.generatePremiumQuotationHtml;
