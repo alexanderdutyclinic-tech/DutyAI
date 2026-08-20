@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Duty AI — Treatment Plan Generator</title>
+  <link rel="stylesheet" href="Frontend/styles.css">
+</head>
+<body>
+<main class="app-shell">
+  <header class="app-header">
+    <div>
+      <div class="brand">🦷 Duty AI</div>
+      <h1>Treatment Plan Generator</h1>
+      <p>Doctor diagnosis → coordinator review → quotation.</p>
+    </div>
+    <div>Step <strong id="stepNumber">1</strong> of 4</div>
+  </header>
+
+  <section class="card" id="step1">
+    <h2>1. Patient & language</h2>
+    <label>Patient name</label>
+    <input id="patientName" placeholder="Enter patient name">
+    <label>Arabic patient name (optional)</label>
+    <input id="patientNameArabic" placeholder="الاسم بالعربية — optional for Arabic PDF">
+    <label>Quotation language</label>
+    <select id="language">
+      <option>Russian</option><option>English</option><option>French</option><option>Arabic</option><option>Spanish</option>
+    </select>
+    <button class="primary" id="toDiagnosis">Continue</button>
+  </section>
+
+  <section class="card hidden" id="step2">
+    <h2>2. Diagnosis Copy-past</h2>
+    <p>Paste the doctor's message from the WhatsApp group exactly as received.</p>
+    <label>Doctor diagnosis / treatment data</label>
+    <textarea id="diagnosis" rows="12" placeholder="Paste the doctor's diagnosis here..."></textarea>
+    <div class="actions"><button class="secondary" id="backToPatient">Back</button><button class="primary" id="parseDiagnosis">Structure diagnosis</button></div>
+  </section>
+
+  <section class="card hidden" id="step3">
+    <h2>3. Confirm treatment data</h2>
+    <p>The doctor's message is copied below for review. You can edit it if clarification or correction is needed before quotation.</p>
+    <div class="data-box">
+      <div><strong>Patient:</strong> <span id="confirmedPatient"></span></div>
+      <div><strong>Language:</strong> <span id="confirmedLanguage"></span></div>
+      <div><strong>Source:</strong> Diagnosis Copy-past</div>
+      <label for="confirmedDiagnosis"><strong>Doctor data / treatment information</strong></label>
+      <textarea id="confirmedDiagnosis" rows="12"></textarea>
+    </div>
+    <label class="check-row"><input type="checkbox" id="confirmTreatment"> I reviewed the treatment data and confirm it matches the doctor's information.</label>
+    <div class="actions"><button class="secondary" id="backToDiagnosis">Back</button><button class="primary" id="continueToOptions" disabled>Continue to quotation options</button></div>
+  </section>
+
+  <section class="card hidden" id="step4">
+    <div class="section-heading">
+      <div>
+        <h2>4. Quotation options</h2>
+        <p>Build one or more patient-facing options. Official prices come from Duty Clinic pricing data; coordinator markup is added separately.</p>
+      </div>
+      <button class="secondary" id="addOption">+ Add option</button>
+    </div>
+
+    <div class="option-toolbar">
+      <label>Patient country</label>
+      <select id="patientCountry">
+        <option value="Other">Other</option>
+        <option value="United States">United States</option>
+        <option value="Canada">Canada</option>
+      </select>
+
+      <label>Payment method</label>
+      <select id="paymentMethod">
+        <option value="visit-payments">Pay by visits — no installments</option>
+        <option value="installments">US / Canada installment plan</option>
+      </select>
+    </div>
+
+    <div id="quotationOptions"></div>
+
+    <div class="quote-summary" id="quoteSummary">
+      <h3>Current quotation</h3>
+      <div id="summaryLines"></div>
+    </div>
+
+    <div class="actions">
+      <button class="secondary" id="backToConfirmation">Back</button>
+      <button class="secondary" id="refreshQuotation">Recalculate</button>
+      <button class="secondary" id="generatePdf">Simple Quotation</button>
+      <button class="primary" id="generatePremiumPdf">Premium Proposal</button>
+    </div>
+  </section>
+
+  <footer>Duty Clinic • Coordinator-controlled workflow</footer>
+</main>
+<script src="Data/pricing.js"></script>
+<script src="Frontend/app.js"></script>
+<script src="assets/doctors/doctors.js"></script>
+<script src="src/quotation/quotation-data.js"></script>
+<script src="src/PDF/pdf-generator.js"></script>
+<script src="src/PDF/pdf-generator-ar.js"></script>
+<script src="src/PDF/pdf-polish.js"></script>
+<script src="src/PDF/premium/premium-generator.js"></script>
+<script src="src/PDF/pdf-ar-bind.js"></script>
+<script src="src/PDF/pdf-bind.js"></script>
+</body>
+</html>
