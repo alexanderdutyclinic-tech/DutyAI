@@ -216,3 +216,152 @@ footer {
 #quotationOptions .quotation-option:nth-child(4) .option-header {
   background: #f5f3ff;
 }
+
+/* =========================================
+   COORDINATOR CONTROLS
+   ========================================= */
+
+.option-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  align-items: end;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #f7f9fa;
+  border: 1px solid #e1e6ea;
+  border-radius: 12px;
+}
+
+.option-toolbar > label {
+  margin: 0;
+}
+
+.coordinator-control {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  align-items: end;
+  padding-top: 12px;
+  border-top: 1px solid #dfe5ea;
+}
+
+.coordinator-control > label:first-child {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.eur-rate-wrap {
+  grid-column: 1 / -1;
+}
+
+.eur-rate-wrap label {
+  margin-top: 0;
+}
+
+.eur-rate-wrap small,
+.manual-final-price small,
+.coordinator-control small {
+  display: block;
+  margin-top: 6px;
+  color: #6b7680;
+  font-size: 12px;
+}
+
+.coordinator-visibility {
+  padding: 14px 16px;
+  border: 1px solid #e1e6ea;
+  border-radius: 10px;
+  background: #fff;
+  margin-bottom: 16px;
+}
+
+.coordinator-visibility > strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 20px 5px 0;
+  font-weight: 400;
+}
+
+.inline-check input {
+  width: auto;
+}
+
+.procedure-picker {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.procedure-picker .add-procedure {
+  white-space: nowrap;
+}
+
+.selected-procedures {
+  margin-top: 10px;
+}
+
+.selected-procedure {
+  padding: 10px 12px;
+  margin: 8px 0;
+  border: 1px solid #dfe5ea;
+  border-radius: 9px;
+  background: #f8fafb;
+}
+
+.selected-procedure .check-item {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.selected-procedure .check-item input {
+  width: auto;
+}
+
+.remove-procedure {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #a33;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.procedure-quantity {
+  margin-top: 8px;
+}
+
+.procedure-quantity label {
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+
+.manual-final-price {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px dashed #b9c4cd;
+  border-radius: 10px;
+  background: #fbfcfd;
+}
+
+.manual-final-price label {
+  margin-top: 0;
+}
+
+@media (max-width: 700px) {
+  .option-toolbar,
+  .coordinator-control {
+    grid-template-columns: 1fr;
+  }
+}
