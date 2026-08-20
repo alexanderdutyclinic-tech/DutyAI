@@ -115,5 +115,62 @@
 <script src="src/PDF/pdf-ar-bind.js"></script>
 <script src="src/PDF/pdf-bind.js"></script>
 <script src="Frontend/coordinator-updates.js"></script>
+<script>
+// Patient-facing PDF display rules: keep the table, but replace hidden line-item
+// prices with "Included" and convert USD output to the coordinator-selected currency.
+(() => {
+  const original = window.generatePremiumQuotationHtml;
+  if (typeof original !== 'function' || original.__dutyAiDisplayPatched) return;
+
+  const money = (value, symbol, rate) => {
+    const amount = (Number(value) || 0) * rate;
+    return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: amount % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+  };
+
+  const currencyConfig = (quotation) => {
+    const currency = quotation?.display?.currency || document.getElementById('quoteCurrency')?.value || 'USD';
+    const rate = Number(quotation?.display?.usdToCurrencyRate) || 1;
+    return currency === 'EUR' ? { symbol: '€', rate } : { symbol: '$', rate: 1 };
+  };
+
+  const patched = function (quotation) {
+    let html = original(quotation);
+    const cfg = currencyConfig(quotation);
+
+    // Premium renderer currently emits USD. Convert every monetary display to
+    // the selected patient-facing currency before opening the print window.
+    if (cfg.symbol !== '$' || cfg.rate !== 1) {
+      html = html.replace(/\$([\d,]+(?:\.\d+)?)/g, (_, value) => money(value.replace(/,/g, ''), cfg.symbol, cfg.rate));
+    }
+
+    const showProducts = document.getElementById('showProductPrices')?.checked ?? true;
+    const showHotels = document.getElementById('showHotelPrices')?.checked ?? true;
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    if (!showProducts) {
+      doc.querySelectorAll('.treatment-row').forEach(row => {
+        const cells = row.children;
+        if (cells.length >= 3) cells[cells.length - 1].textContent = 'Included';
+      });
+      doc.querySelectorAll('.service-list > div > strong').forEach(el => {
+        el.textContent = 'Included';
+      });
+    }
+
+    if (!showHotels) {
+      doc.querySelectorAll('.visit-line > strong').forEach(el => {
+        el.textContent = 'Included';
+      });
+    }
+
+    return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+  };
+
+  patched.__dutyAiDisplayPatched = true;
+  window.generatePremiumQuotationHtml = patched;
+})();
+</script>
 </body>
 </html>
